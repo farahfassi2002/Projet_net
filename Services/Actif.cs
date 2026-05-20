@@ -10,7 +10,7 @@ namespace PortefeuilleInvestissement.Models
         public int Id { get; set; }
 
         [Required]
-        [StringLength(100, MinimumLength = 2, ErrorMessage = "Le nom doit faire entre 2 et 100 caractères.")]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Le nom doit être entre 2 et 100 caractères.")]
         public string Nom { get; set; } = string.Empty;
 
         [Required]
