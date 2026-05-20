@@ -1,0 +1,208 @@
+@page "/dashboard"
+@attribute [Authorize]
+@inject ITransactionService TransactionSvc
+@inject IInvestisseurService InvestisseurSvc
+@inject IActifService ActifSvc
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Tableau de bord — Portefeuille</PageTitle>
+
+<h4 class="fw-bold mb-4">
+    <i class="bi bi-speedometer2 me-2 text-primary"></i>Tableau de bord
+</h4>
+
+@if (_loading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Chargement du portefeuille...</p>
+    </div>
+}
+else if (_investisseur == null)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        Profil investisseur introuvable. Contactez l'administrateur.
+    </div>
+}
+else
+{
+    <!-- KPIs principaux -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <KpiCard Label="Valeur du portefeuille"
+                     Value="@_valeurPortefeuille.ToString("C2")"
+                     Icon="bi-briefcase-fill"
+                     IconBg="#e3f2fd" IconColor="#1565c0" />
+        </div>
+        <div class="col-6 col-lg-3">
+            <KpiCard Label="Gain / Perte global"
+                     Value="@((_gainPerte >= 0 ? "+" : "") + _gainPerte.ToString("C2"))"
+                     Subtitle="@(_gainPertePct.ToString("F2") + "%")"
+                     Icon="@(_gainPerte >= 0 ? "bi-arrow-up-circle-fill" : "bi-arrow-down-circle-fill")"
+                     IconBg="@(_gainPerte >= 0 ? "#e8f5e9" : "#ffebee")"
+                     IconColor="@(_gainPerte >= 0 ? "#2e7d32" : "#c62828")"
+                     ValueColor="@(_gainPerte >= 0 ? "#2e7d32" : "#c62828")" />
+        </div>
+        <div class="col-6 col-lg-3">
+            <KpiCard Label="Budget disponible"
+                     Value="@_investisseur.BudgetDisponible.ToString("C2")"
+                     Subtitle="@("Total : " + _investisseur.BudgetTotal.ToString("C2"))"
+                     Icon="bi-wallet2"
+                     IconBg="#fff8e1" IconColor="#f57f17" />
+        </div>
+        <div class="col-6 col-lg-3">
+            <KpiCard Label="Transactions"
+                     Value="@_nbTransactions.ToString()"
+                     Subtitle="@(_nbActifs + " actif(s) en portefeuille")"
+                     Icon="bi-arrow-left-right"
+                     IconBg="#f3e5f5" IconColor="#6a1b9a" />
+        </div>
+    </div>
+
+    <!-- Répartition par type + Performance par actif -->
+    <div class="row g-3 mb-4">
+        <!-- Répartition par type d'actif -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold border-bottom-0 pt-3">
+                    <i class="bi bi-pie-chart-fill text-info me-2"></i>Répartition par type d'actif
+                </div>
+                <div class="card-body">
+                    @if (!_repartition.Any())
+                    {
+                        <p class="text-muted text-center py-3">Aucun actif en portefeuille.</p>
+                    }
+                    else
+                    {
+                        @foreach (var r in _repartition)
+                        {
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="fw-semibold">@r.TypeLabel</span>
+                                    <span class="text-muted">@r.ValeurTotale.ToString("C0") (@r.Pourcentage.ToString("F1")%)</span>
+                                </div>
+                                <div class="progress" style="height:10px">
+                                    <div class="progress-bar @GetProgressClass(r.TypeLabel)"
+                                         role="progressbar"
+                                         style="width:@r.Pourcentage%">
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance par actif -->
+        <div class="col-lg-7">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold border-bottom-0 pt-3">
+                    <i class="bi bi-bar-chart-fill text-primary me-2"></i>Performance par actif
+                </div>
+                <div class="card-body p-0">
+                    @if (!_performances.Any())
+                    {
+                        <p class="text-muted text-center py-4">Aucune position ouverte.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 align-middle small">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Actif</th>
+                                        <th class="text-end">Qté</th>
+                                        <th class="text-end">Val. actuelle</th>
+                                        <th class="text-end">Gain/Perte</th>
+                                        <th class="text-end">%</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var p in _performances)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span class="fw-semibold">@p.Symbole</span>
+                                                <small class="text-muted d-block">@p.NomActif</small>
+                                            </td>
+                                            <td class="text-end">@p.Quantite.ToString("F4")</td>
+                                            <td class="text-end fw-semibold">@p.ValeurActuelle.ToString("C2")</td>
+                                            <td class="text-end @(p.GainPerte >= 0 ? "text-success" : "text-danger")">
+                                                @((p.GainPerte >= 0 ? "+" : "") + p.GainPerte.ToString("C2"))
+                                            </td>
+                                            <td class="text-end @(p.GainPertePct >= 0 ? "text-success" : "text-danger")">
+                                                @((p.GainPertePct >= 0 ? "+" : "") + p.GainPertePct.ToString("F2"))%
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dernières transactions -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white fw-semibold border-bottom-0 pt-3 d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-clock-history text-secondary me-2"></i>Historique récent des opérations</span>
+            <a href="/transactions" class="btn btn-sm btn-outline-primary">Voir tout</a>
+        </div>
+        <div class="card-body p-0">
+            <TransactionTable Transactions="_dernieresTransactions" ShowActions="false" />
+        </div>
+    </div>
+}
+
+@code {
+    bool _loading = true;
+    Investisseur? _investisseur;
+    float _valeurPortefeuille;
+    float _gainPerte;
+    float _gainPertePct;
+    int _nbTransactions;
+    int _nbActifs;
+    List<StatActif> _performances = new();
+    List<StatTypeActif> _repartition = new();
+    List<Transaction> _dernieresTransactions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (userId != null)
+        {
+            _investisseur = await InvestisseurSvc.GetInvestisseurByUserIdAsync(userId);
+            if (_investisseur != null)
+            {
+                var id = _investisseur.InvestisseurId;
+                _valeurPortefeuille = await TransactionSvc.GetValeurPortefeuilleAsync(id);
+                _gainPerte = await TransactionSvc.GetGainPerteGlobalAsync(id);
+                _performances = await TransactionSvc.GetPerformanceParActifAsync(id);
+                _repartition = await TransactionSvc.GetRepartitionParTypeAsync(id);
+                var allTx = await TransactionSvc.GetTransactionsByInvestisseurAsync(id);
+                _nbTransactions = allTx.Count;
+                _nbActifs = _performances.Count;
+                _dernieresTransactions = allTx.Take(5).ToList();
+
+                float coutTotal = _performances.Sum(p => p.CoutTotal);
+                _gainPertePct = coutTotal != 0 ? (_gainPerte / coutTotal) * 100f : 0f;
+            }
+        }
+        _loading = false;
+    }
+
+    string GetProgressClass(string type) => type switch
+    {
+        "Action" => "bg-primary",
+        "CryptoMonnaie" => "bg-warning",
+        "ETF" => "bg-info",
+        "Obligation" => "bg-secondary",
+        _ => "bg-light"
+    };
+}
