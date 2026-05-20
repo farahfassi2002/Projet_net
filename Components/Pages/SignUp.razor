@@ -1,0 +1,68 @@
+@page "/signup"
+@attribute [AllowAnonymous]
+
+<PageTitle>Inscription — Portefeuille</PageTitle>
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <i class="bi bi-person-plus text-primary fs-1"></i>
+                    <h4 class="mt-2 fw-bold">Créer un compte</h4>
+                    <p class="text-muted small">Rejoignez et gérez votre portefeuille</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Error))
+                {
+                    <div class="alert alert-danger py-2">
+                        <i class="bi bi-exclamation-triangle me-2"></i>@Error
+                    </div>
+                }
+
+                <form method="post" action="/api/auth/register" data-enhance="false">
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Nom</label>
+                            <input type="text" name="nom" class="form-control" placeholder="Dupont" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Prénom</label>
+                            <input type="text" name="prenom" class="form-control" placeholder="Jean" required />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email</label>
+                        <input type="email" name="email" class="form-control" placeholder="votre@email.com" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Mot de passe</label>
+                        <input type="password" name="password" class="form-control" placeholder="Min. 6 caractères" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Confirmer le mot de passe</label>
+                        <input type="password" name="confirmPassword" class="form-control" placeholder="••••••••" required />
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Budget initial (€)</label>
+                        <input type="number" name="budgetInitial" class="form-control" value="10000" min="0" step="100" />
+                        <div class="form-text">Montant que vous souhaitez investir au départ.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-2">
+                        <i class="bi bi-person-check me-2"></i>Créer mon compte
+                    </button>
+                </form>
+
+                <hr class="my-3" />
+                <div class="text-center small">
+                    Déjà un compte ?
+                    <a href="/login" class="text-primary text-decoration-none fw-semibold">Se connecter</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+}
