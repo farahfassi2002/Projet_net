@@ -1,0 +1,206 @@
+@page "/analytics"
+@attribute [Authorize]
+@inject ITransactionService TransactionSvc
+@inject IInvestisseurService InvestisseurSvc
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Analytique — Portefeuille</PageTitle>
+
+<h4 class="fw-bold mb-4">
+    <i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Indicateurs analytiques
+</h4>
+
+@if (_loading)
+{
+    <div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>
+}
+else
+{
+    <!-- KPIs analytiques -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <KpiCard Label="Valeur actuelle"
+                     Value="@_valeurPortefeuille.ToString("C2")"
+                     Icon="bi-graph-up-arrow"
+                     IconBg="#e3f2fd" IconColor="#1565c0" />
+        </div>
+        <div class="col-6 col-lg-3">
+            <KpiCard Label="Gain / Perte"
+                     Value="@((_gainPerte >= 0 ? "+" : "") + _gainPerte.ToString("C2"))"
+                     Subtitle="@(_gainPertePct.ToString("F2") + "%")"
+                     Icon="@(_gainPerte >= 0 ? "bi-emoji-smile" : "bi-emoji-frown")"
+                     IconBg="@(_gainPerte >= 0 ? "#e8f5e9" : "#ffebee")"
+                     IconColor="@(_gainPerte >= 0 ? "#2e7d32" : "#c62828")"
+                     ValueColor="@(_gainPerte >= 0 ? "#2e7d32" : "#c62828")" />
+        </div>
+        <div class="col-6 col-lg-3">
+            <KpiCard Label="Meilleure position"
+                     Value="@(_meilleurePerf?.Symbole ?? "—")"
+                     Subtitle="@(_meilleurePerf != null ? (_meilleurePerf.GainPertePct >= 0 ? "+" : "") + _meilleurePerf.GainPertePct.ToString("F2") + "%" : "")"
+                     Icon="bi-trophy-fill"
+                     IconBg="#fff8e1" IconColor="#f9a825" />
+        </div>
+        <div class="col-6 col-lg-3">
+            <KpiCard Label="Pire position"
+                     Value="@(_pirePerf?.Symbole ?? "—")"
+                     Subtitle="@(_pirePerf != null ? (_pirePerf.GainPertePct >= 0 ? "+" : "") + _pirePerf.GainPertePct.ToString("F2") + "%" : "")"
+                     Icon="bi-exclamation-triangle-fill"
+                     IconBg="#ffebee" IconColor="#c62828" />
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Performance par actif -->
+        <div class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white fw-semibold pt-3 border-bottom-0">
+                    <i class="bi bi-bar-chart-fill text-primary me-2"></i>Performance détaillée par actif
+                </div>
+                <div class="card-body">
+                    @if (!_performances.Any())
+                    {
+                        <p class="text-muted text-center py-4">Aucune position ouverte.</p>
+                    }
+                    else
+                    {
+                        @foreach (var p in _performances)
+                        {
+                            float pct = Math.Max(0, Math.Min(100, (p.ValeurActuelle / _valeurPortefeuille) * 100));
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div>
+                                        <span class="fw-semibold">@p.Symbole</span>
+                                        <small class="text-muted ms-2">@p.NomActif</small>
+                                        <span class="badge @GetTypeBadge(p.Type) ms-2">@p.Type</span>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="fw-bold">@p.ValeurActuelle.ToString("C2")</span>
+                                        <span class="ms-2 small @(p.GainPertePct >= 0 ? "text-success" : "text-danger")">
+                                            @((p.GainPertePct >= 0 ? "+" : "") + p.GainPertePct.ToString("F2"))%
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="progress mb-1" style="height:8px; border-radius:4px">
+                                    <div class="progress-bar @(p.GainPerte >= 0 ? "bg-success" : "bg-danger")"
+                                         style="width:@pct.ToString("F0")%;border-radius:4px"></div>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-muted">Qté : @p.Quantite.ToString("F4") | Prix moy. : @p.PrixMoyenAchat.ToString("C2")</small>
+                                    <small class="@(p.GainPerte >= 0 ? "text-success" : "text-danger")">
+                                        G/P : @((p.GainPerte >= 0 ? "+" : "") + p.GainPerte.ToString("C2"))
+                                    </small>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Répartition par type -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white fw-semibold pt-3 border-bottom-0">
+                    <i class="bi bi-pie-chart-fill text-info me-2"></i>Répartition par type d'actif
+                </div>
+                <div class="card-body">
+                    @if (!_repartition.Any())
+                    {
+                        <p class="text-muted text-center py-4">Aucune donnée disponible.</p>
+                    }
+                    else
+                    {
+                        <!-- Légende visuelle -->
+                        <div class="d-flex flex-wrap gap-2 mb-4">
+                            @foreach (var r in _repartition)
+                            {
+                                <span class="badge @GetProgressClass(r.TypeLabel) px-2 py-1">
+                                    @r.TypeLabel — @r.Pourcentage.ToString("F1")%
+                                </span>
+                            }
+                        </div>
+                        <!-- Barres horizontales empilées visuellement -->
+                        <div class="d-flex w-100 mb-4" style="height:24px; border-radius:8px; overflow:hidden">
+                            @foreach (var r in _repartition)
+                            {
+                                <div class="@GetProgressClass(r.TypeLabel)"
+                                     style="width:@r.Pourcentage%;height:100%"
+                                     title="@r.TypeLabel : @r.Pourcentage.ToString("F1")%">
+                                </div>
+                            }
+                        </div>
+                        <!-- Détails -->
+                        @foreach (var r in _repartition)
+                        {
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle @GetProgressClass(r.TypeLabel)"
+                                         style="width:12px;height:12px;flex-shrink:0"></div>
+                                    <span class="fw-semibold">@r.TypeLabel</span>
+                                </div>
+                                <div class="text-end">
+                                    <span class="fw-bold">@r.ValeurTotale.ToString("C2")</span>
+                                    <span class="text-muted small ms-2">@r.Pourcentage.ToString("F1")%</span>
+                                </div>
+                            </div>
+                            <div class="progress mb-3" style="height:6px">
+                                <div class="progress-bar @GetProgressClass(r.TypeLabel)"
+                                     style="width:@r.Pourcentage%"></div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    bool _loading = true;
+    float _valeurPortefeuille, _gainPerte, _gainPertePct;
+    List<StatActif> _performances = new();
+    List<StatTypeActif> _repartition = new();
+    StatActif? _meilleurePerf, _pirePerf;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (uid != null)
+        {
+            var inv = await InvestisseurSvc.GetInvestisseurByUserIdAsync(uid);
+            if (inv != null)
+            {
+                int id = inv.InvestisseurId;
+                _valeurPortefeuille = await TransactionSvc.GetValeurPortefeuilleAsync(id);
+                _gainPerte = await TransactionSvc.GetGainPerteGlobalAsync(id);
+                _performances = await TransactionSvc.GetPerformanceParActifAsync(id);
+                _repartition = await TransactionSvc.GetRepartitionParTypeAsync(id);
+
+                float cout = _performances.Sum(p => p.CoutTotal);
+                _gainPertePct = cout != 0 ? (_gainPerte / cout) * 100f : 0f;
+                _meilleurePerf = _performances.OrderByDescending(p => p.GainPertePct).FirstOrDefault();
+                _pirePerf = _performances.OrderBy(p => p.GainPertePct).FirstOrDefault();
+            }
+        }
+        _loading = false;
+    }
+
+    string GetTypeBadge(TypeActif t) => t switch
+    {
+        TypeActif.Action => "bg-primary",
+        TypeActif.CryptoMonnaie => "bg-warning text-dark",
+        TypeActif.ETF => "bg-info text-dark",
+        TypeActif.Obligation => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+
+    string GetProgressClass(string type) => type switch
+    {
+        "Action" => "bg-primary",
+        "CryptoMonnaie" => "bg-warning",
+        "ETF" => "bg-info",
+        "Obligation" => "bg-secondary",
+        _ => "bg-light"
+    };
+}
