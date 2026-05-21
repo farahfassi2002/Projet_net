@@ -1,0 +1,462 @@
+/* ===================================================
+   PORTEFEUILLE INVESTISSEMENT — Thème Bleu Marine / Bleu Clair
+   =================================================== */
+
+/* ─── Variables couleurs ─────────────────────────── */
+:root {
+    --bleu-marine:    #0d2b55;
+    --bleu-fonce:     #1a3a6b;
+    --bleu-moyen:     #1e5fa8;
+    --bleu-clair:     #3b9bd4;
+    --bleu-tres-clair:#d0e8f7;
+    --bleu-pastel:    #e8f4fd;
+    --accent-or:      #f0b429;
+    --accent-vert:    #22c55e;
+    --accent-rouge:   #ef4444;
+    --texte-sombre:   #0f1e35;
+    --texte-muted:    #5a7392;
+    --fond-page:      #f0f4f9;
+    --fond-carte:     #ffffff;
+    --bordure:        #c8dff0;
+    --ombre:          0 2px 12px rgba(13,43,85,0.10);
+    --ombre-hover:    0 6px 24px rgba(13,43,85,0.18);
+    --rayon:          10px;
+    --rayon-lg:       16px;
+}
+
+/* ─── Reset & base ───────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+    height: 100%;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: var(--fond-page);
+    color: var(--texte-sombre);
+    font-size: 15px;
+}
+
+/* ─── Layout principal (repris du projet de classe) ─ */
+.page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (min-width: 641px) {
+    .page {
+        flex-direction: row;
+    }
+
+    .sidebar {
+        width: 250px;
+        height: 100vh;
+        position: sticky;
+        top: 0;
+        flex-shrink: 0;
+    }
+}
+
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+.top-row {
+    background-color: var(--fond-carte);
+    border-bottom: 1px solid var(--bordure);
+    justify-content: flex-end;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    padding: 0 1.5rem;
+}
+
+.content {
+    padding: 1.5rem;
+}
+
+article.content.px-4 {
+    padding: 1.5rem 2rem !important;
+}
+
+/* ─── Sidebar / Navigation ───────────────────────── */
+.sidebar {
+    background: linear-gradient(180deg, var(--bleu-marine) 0%, var(--bleu-fonce) 100%);
+    color: #fff;
+}
+
+.navbar-brand {
+    color: #fff !important;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    padding: 0.5rem 0;
+}
+
+.navbar-brand i {
+    color: var(--accent-or);
+}
+
+.top-row.navbar-dark {
+    background: linear-gradient(90deg, var(--bleu-marine), var(--bleu-fonce));
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    height: 3.8rem;
+}
+
+.nav-scrollable {
+    overflow-y: auto;
+}
+
+.nav-item {
+    margin: 2px 0;
+}
+
+.nav-link {
+    color: rgba(255,255,255,0.72) !important;
+    border-radius: var(--rayon);
+    padding: 0.55rem 1rem;
+    transition: background 0.18s, color 0.18s, padding-left 0.18s;
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+}
+
+.nav-link i {
+    font-size: 1rem;
+    width: 1.4rem;
+}
+
+.nav-link:hover {
+    background: rgba(255,255,255,0.10);
+    color: #fff !important;
+    padding-left: 1.3rem;
+}
+
+.nav-link.active {
+    background: rgba(59,155,212,0.28);
+    color: var(--bleu-clair) !important;
+    font-weight: 600;
+    border-left: 3px solid var(--bleu-clair);
+}
+
+.navbar-toggler {
+    appearance: none;
+    cursor: pointer;
+    width: 3.5rem;
+    height: 2rem;
+    color: white;
+    border: 0;
+    background: none;
+    padding: 0;
+    position: absolute;
+    top: 0.8rem;
+    right: 1rem;
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .navbar-toggler { display: block; }
+}
+
+/* ─── Cards ──────────────────────────────────────── */
+.card {
+    background: var(--fond-carte);
+    border: 1px solid var(--bordure);
+    border-radius: var(--rayon-lg);
+    box-shadow: var(--ombre);
+    transition: box-shadow 0.2s;
+}
+
+.card:hover {
+    box-shadow: var(--ombre-hover);
+}
+
+.card-header {
+    background: var(--fond-carte);
+    border-bottom: 1px solid var(--bordure);
+    border-radius: var(--rayon-lg) var(--rayon-lg) 0 0 !important;
+    font-weight: 600;
+    color: var(--bleu-marine);
+    font-size: 0.97rem;
+    padding: 0.9rem 1.25rem;
+}
+
+/* ─── KPI Cards ──────────────────────────────────── */
+.kpi-card {
+    border-left: 4px solid var(--bleu-clair);
+    transition: transform 0.18s, box-shadow 0.18s;
+}
+
+.kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--ombre-hover);
+}
+
+.kpi-icon {
+    flex-shrink: 0;
+}
+
+/* ─── Actif Cards ────────────────────────────────── */
+.actif-card {
+    border-top: 3px solid var(--bleu-moyen);
+    transition: transform 0.18s, box-shadow 0.18s;
+}
+
+.actif-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--ombre-hover);
+}
+
+/* ─── Boutons ────────────────────────────────────── */
+.btn-primary {
+    background: linear-gradient(135deg, var(--bleu-moyen), var(--bleu-clair));
+    border: none;
+    color: #fff;
+    border-radius: var(--rayon);
+    font-weight: 500;
+    transition: opacity 0.18s, transform 0.15s;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, var(--bleu-moyen), var(--bleu-clair));
+    color: #fff;
+}
+
+.btn-outline-primary {
+    border: 1.5px solid var(--bleu-moyen);
+    color: var(--bleu-moyen);
+    border-radius: var(--rayon);
+    font-weight: 500;
+    background: transparent;
+}
+
+.btn-outline-primary:hover {
+    background: var(--bleu-pastel);
+    color: var(--bleu-marine);
+    border-color: var(--bleu-marine);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+    border: none;
+    border-radius: var(--rayon);
+    font-weight: 500;
+}
+
+.btn-danger, .btn-outline-danger {
+    border-radius: var(--rayon);
+}
+
+.btn-secondary, .btn-outline-secondary {
+    border-radius: var(--rayon);
+}
+
+.btn-sm {
+    font-size: 0.82rem;
+    padding: 0.3rem 0.7rem;
+}
+
+/* ─── Formulaires ────────────────────────────────── */
+.form-control, .form-select {
+    border: 1.5px solid var(--bordure);
+    border-radius: var(--rayon);
+    color: var(--texte-sombre);
+    background-color: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    padding: 0.48rem 0.85rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--bleu-clair);
+    box-shadow: 0 0 0 3px rgba(59,155,212,0.18);
+    outline: none;
+}
+
+.form-label {
+    font-weight: 600;
+    color: var(--bleu-marine);
+    font-size: 0.88rem;
+    margin-bottom: 0.3rem;
+}
+
+.form-text {
+    color: var(--texte-muted);
+    font-size: 0.8rem;
+}
+
+/* ─── Tableaux ───────────────────────────────────── */
+.table {
+    color: var(--texte-sombre);
+    font-size: 0.91rem;
+}
+
+.table thead th {
+    background: var(--bleu-pastel);
+    color: var(--bleu-marine);
+    font-weight: 700;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 2px solid var(--bordure);
+    padding: 0.7rem 1rem;
+}
+
+.table tbody tr {
+    transition: background 0.15s;
+}
+
+.table-hover tbody tr:hover {
+    background: var(--bleu-pastel);
+}
+
+.table td {
+    padding: 0.65rem 1rem;
+    vertical-align: middle;
+    border-color: var(--bordure);
+}
+
+.table-light {
+    background-color: var(--bleu-pastel) !important;
+}
+
+/* ─── Badges ─────────────────────────────────────── */
+.badge {
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+    letter-spacing: 0.2px;
+}
+
+.bg-primary { background-color: var(--bleu-moyen) !important; }
+.bg-info     { background-color: var(--bleu-clair) !important; color: #fff !important; }
+
+/* ─── Alertes ────────────────────────────────────── */
+.alert {
+    border-radius: var(--rayon);
+    border: none;
+    font-size: 0.91rem;
+}
+
+.alert-danger  { background: #fef2f2; color: #991b1b; border-left: 4px solid var(--accent-rouge); }
+.alert-success { background: #f0fdf4; color: #166534; border-left: 4px solid var(--accent-vert); }
+.alert-warning { background: #fffbeb; color: #92400e; border-left: 4px solid var(--accent-or); }
+.alert-light   { background: var(--bleu-pastel); color: var(--bleu-marine); border-left: 4px solid var(--bleu-clair); }
+
+/* ─── Progress bars ──────────────────────────────── */
+.progress {
+    background-color: var(--bleu-tres-clair);
+    border-radius: 8px;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+/* ─── Modales ────────────────────────────────────── */
+.modal-content {
+    border: none;
+    border-radius: var(--rayon-lg);
+    box-shadow: 0 20px 60px rgba(13,43,85,0.25);
+}
+
+.modal-header {
+    border-radius: var(--rayon-lg) var(--rayon-lg) 0 0;
+    padding: 1.1rem 1.5rem;
+}
+
+.modal-header.bg-primary {
+    background: linear-gradient(135deg, var(--bleu-marine), var(--bleu-moyen)) !important;
+}
+
+.modal-header.bg-success {
+    background: linear-gradient(135deg, #15803d, #22c55e) !important;
+}
+
+.modal-header.bg-danger {
+    background: linear-gradient(135deg, #991b1b, #ef4444) !important;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--bordure);
+    border-radius: 0 0 var(--rayon-lg) var(--rayon-lg);
+    background: var(--fond-page);
+}
+
+/* ─── Page de connexion & inscription ────────────── */
+.card.shadow-sm.border-0 {
+    border-radius: var(--rayon-lg) !important;
+    box-shadow: 0 8px 32px rgba(13,43,85,0.13) !important;
+}
+
+/* ─── Titres de page ─────────────────────────────── */
+h4.fw-bold {
+    color: var(--bleu-marine);
+    font-size: 1.35rem;
+}
+
+/* ─── Top row (barre supérieure) ─────────────────── */
+.top-row {
+    background: #fff;
+    border-bottom: 1px solid var(--bordure);
+}
+
+.top-row .text-muted {
+    color: var(--texte-muted) !important;
+    font-size: 0.88rem;
+}
+
+/* ─── Spinner ────────────────────────────────────── */
+.spinner-border.text-primary { color: var(--bleu-clair) !important; }
+.spinner-border.text-warning { color: var(--accent-or) !important; }
+
+/* ─── Icônes vides (état aucune donnée) ──────────── */
+.bi.fs-1 {
+    color: var(--bleu-tres-clair);
+}
+
+/* ─── Code ───────────────────────────────────────── */
+code {
+    background: var(--bleu-pastel);
+    color: var(--bleu-marine);
+    border-radius: 4px;
+    padding: 0.15em 0.45em;
+    font-size: 0.88em;
+}
+
+/* ─── Scrollbar ──────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--fond-page); }
+::-webkit-scrollbar-thumb { background: var(--bleu-tres-clair); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--bleu-clair); }
+
+/* ─── Utilitaires spécifiques ────────────────────── */
+.text-primary { color: var(--bleu-moyen) !important; }
+.bg-primary-subtle { background-color: var(--bleu-pastel) !important; }
+.border-primary { border-color: var(--bleu-moyen) !important; }
+
+.rounded-pill { border-radius: 50px !important; }
+
+.min-vh-75 { min-height: 75vh; }
+
+/* Page d'accueil hero */
+.display-5 { color: var(--bleu-marine); }
+.display-5 .text-primary { color: var(--bleu-clair) !important; }
+
+/* Séparateurs sidebar */
+.sidebar hr.text-secondary {
+    border-color: rgba(255,255,255,0.15);
+    margin: 0.5rem 0;
+}
+
+.sidebar .text-muted.small {
+    color: rgba(255,255,255,0.35) !important;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 0.5rem 1rem 0;
+}

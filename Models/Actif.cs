@@ -3,10 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace PortefeuilleInvestissement.Models
 {
-    /// <summary>
-    /// Actif financier (action, cryptomonnaie, ETF, obligation).
-    /// Correspond à la classe Chambre du diagramme de classe.
-    /// </summary>
+    
     public class Actif
     {
         [Key]

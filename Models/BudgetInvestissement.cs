@@ -2,9 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PortefeuilleInvestissement.Models
 {
-    /// <summary>
-    /// Enregistrement d'une allocation de budget par un investisseur.
-    /// </summary>
+
     public class BudgetInvestissement
     {
         [Key]
@@ -19,9 +17,7 @@ namespace PortefeuilleInvestissement.Models
         [StringLength(200)]
         public string Description { get; set; } = string.Empty;
 
-        //====== Entity Framework Core relationships ======
 
-        // Clé étrangère vers Investisseur (1..*)
         [Required]
         public int InvestisseurId { get; set; }
         public Investisseur Investisseur { get; set; }
