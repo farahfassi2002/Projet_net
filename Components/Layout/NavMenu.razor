@@ -1,0 +1,64 @@
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/dashboard">
+            <i class="bi bi-graph-up-arrow me-2"></i>PortefeuilleInv
+        </a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/dashboard" Match="NavLinkMatch.All">
+                <i class="bi bi-speedometer2 me-2"></i> Tableau de bord
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/actifs">
+                <i class="bi bi-briefcase-fill me-2"></i> Actifs
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/transactions">
+                <i class="bi bi-arrow-left-right me-2"></i> Transactions
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/budget">
+                <i class="bi bi-wallet2 me-2"></i> Budget
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/analytics">
+                <i class="bi bi-bar-chart-line-fill me-2"></i> Analytique
+            </NavLink>
+        </div>
+
+        <AuthorizeView Roles="Administrateur">
+            <Authorized>
+                <hr class="text-secondary mx-3" />
+                <div class="nav-item px-3">
+                    <span class="nav-link text-muted small">ADMINISTRATION</span>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/admin/actifs">
+                        <i class="bi bi-pencil-square me-2"></i> Gérer les actifs
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/admin/utilisateurs">
+                        <i class="bi bi-people-fill me-2"></i> Gérer les utilisateurs
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+    </nav>
+</div>

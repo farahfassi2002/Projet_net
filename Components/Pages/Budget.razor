@@ -1,0 +1,180 @@
+@page "/budget"
+@attribute [Authorize]
+@inject IInvestisseurService InvestisseurSvc
+@inject AuthenticationStateProvider AuthState
+@inject NotificationService Notify
+
+<PageTitle>Budget — Portefeuille</PageTitle>
+
+<h4 class="fw-bold mb-4">
+    <i class="bi bi-wallet2 me-2 text-warning"></i>Budget d'investissement
+</h4>
+
+@if (_loading)
+{
+    <div class="text-center py-5"><div class="spinner-border text-warning" role="status"></div></div>
+}
+else if (_investisseur == null)
+{
+    <div class="alert alert-warning">Profil investisseur introuvable.</div>
+}
+else
+{
+    <!-- Résumé budget -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <KpiCard Label="Budget total alloué"
+                     Value="@_investisseur.BudgetTotal.ToString("C2")"
+                     Icon="bi-bank2"
+                     IconBg="#fff8e1" IconColor="#f57f17" />
+        </div>
+        <div class="col-md-4">
+            <KpiCard Label="Budget disponible"
+                     Value="@_investisseur.BudgetDisponible.ToString("C2")"
+                     Icon="bi-cash-coin"
+                     IconBg="#e8f5e9" IconColor="#2e7d32" />
+        </div>
+        <div class="col-md-4">
+            <KpiCard Label="Budget investi"
+                     Value="@((_investisseur.BudgetTotal - _investisseur.BudgetDisponible).ToString("C2"))"
+                     Icon="bi-graph-up"
+                     IconBg="#e3f2fd" IconColor="#1565c0" />
+        </div>
+    </div>
+
+    <!-- Barre d'utilisation du budget -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between mb-2">
+                <span class="fw-semibold">Utilisation du budget</span>
+                <span class="text-muted small">@_tauxUtilisation.ToString("F1")% investi</span>
+            </div>
+            <div class="progress" style="height:16px; border-radius:8px">
+                <div class="progress-bar @(_tauxUtilisation > 90 ? "bg-danger" : _tauxUtilisation > 70 ? "bg-warning" : "bg-success")"
+                     style="width:@_tauxUtilisation%;border-radius:8px">
+                </div>
+            </div>
+            <div class="d-flex justify-content-between mt-1">
+                <small class="text-muted">0 €</small>
+                <small class="text-muted">@_investisseur.BudgetTotal.ToString("C0")</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Allouer du budget -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white fw-semibold pt-3 border-bottom-0">
+            <i class="bi bi-plus-circle text-success me-2"></i>Allouer un budget supplémentaire
+        </div>
+        <div class="card-body">
+            @if (!string.IsNullOrEmpty(_erreur))
+            {
+                <div class="alert alert-danger py-2">@_erreur</div>
+            }
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Montant (€)</label>
+                    <input type="number" @bind="_montantAllocation" class="form-control" min="1" step="100" placeholder="ex: 5000" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Description</label>
+                    <input type="text" @bind="_descriptionAllocation" class="form-control" placeholder="ex: Dépôt bancaire mensuel" />
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-success w-100" @onclick="AllouerBudget" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Allouer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historique des allocations -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white fw-semibold pt-3 border-bottom-0">
+            <i class="bi bi-clock-history text-secondary me-2"></i>Historique des allocations
+        </div>
+        <div class="card-body p-0">
+            @if (!_historique.Any())
+            {
+                <p class="text-muted text-center py-4">Aucune allocation enregistrée.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th class="text-end">Montant</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var b in _historique)
+                            {
+                                <tr>
+                                    <td><small class="text-muted">@b.DateCreation.ToString("dd/MM/yyyy HH:mm")</small></td>
+                                    <td class="text-end fw-semibold text-success">+@b.Montant.ToString("C2")</td>
+                                    <td>@b.Description</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<RadzenNotification />
+
+@code {
+    bool _loading = true, _saving;
+    Investisseur? _investisseur;
+    List<BudgetInvestissement> _historique = new();
+    float _montantAllocation;
+    string _descriptionAllocation = "";
+    string _erreur = "";
+    float _tauxUtilisation;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (uid != null)
+        {
+            _investisseur = await InvestisseurSvc.GetInvestisseurByUserIdAsync(uid);
+            if (_investisseur != null)
+            {
+                _historique = await InvestisseurSvc.GetHistoriqueBudgetsAsync(_investisseur.InvestisseurId);
+                _tauxUtilisation = _investisseur.BudgetTotal > 0
+                    ? ((_investisseur.BudgetTotal - _investisseur.BudgetDisponible) / _investisseur.BudgetTotal) * 100f
+                    : 0f;
+            }
+        }
+        _loading = false;
+    }
+
+    async Task AllouerBudget()
+    {
+        if (_montantAllocation <= 0) { _erreur = "Le montant doit être supérieur à 0."; return; }
+        _saving = true;
+        _erreur = "";
+        try
+        {
+            await InvestisseurSvc.AllouerBudgetAsync(_investisseur!.InvestisseurId, _montantAllocation, _descriptionAllocation);
+            _investisseur = await InvestisseurSvc.GetInvestisseurByIdAsync(_investisseur.InvestisseurId);
+            _historique = await InvestisseurSvc.GetHistoriqueBudgetsAsync(_investisseur!.InvestisseurId);
+            _tauxUtilisation = _investisseur.BudgetTotal > 0
+                ? ((_investisseur.BudgetTotal - _investisseur.BudgetDisponible) / _investisseur.BudgetTotal) * 100f
+                : 0f;
+            _montantAllocation = 0;
+            _descriptionAllocation = "";
+            Notify.Notify(NotificationSeverity.Success, "Budget alloué", $"{_montantAllocation:C2} ajouté à votre budget !");
+        }
+        catch (Exception ex) { _erreur = ex.Message; }
+        _saving = false;
+    }
+}

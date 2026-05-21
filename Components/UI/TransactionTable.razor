@@ -1,0 +1,85 @@
+@* Composant tableau affichant une liste de transactions *@
+
+@if (Transactions == null || !Transactions.Any())
+{
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+        Aucune transaction trouvée.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    <th>Actif</th>
+                    <th>Type</th>
+                    <th class="text-end">Quantité</th>
+                    <th class="text-end">Prix unitaire</th>
+                    <th class="text-end">Montant total</th>
+                    <th>Statut</th>
+                    @if (ShowActions)
+                    {
+                        <th class="text-center">Actions</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in Transactions)
+                {
+                    <tr>
+                        <td>
+                            <small class="text-muted">@t.DateTransaction.ToString("dd/MM/yyyy")</small>
+                        </td>
+                        <td>
+                            <span class="fw-semibold">@t.Actif?.Symbole</span>
+                            <small class="text-muted d-block">@t.Actif?.Nom</small>
+                        </td>
+                        <td>
+                            <span class="badge @(t.Type == TypeTransaction.Achat ? "bg-success" : "bg-danger")">
+                                <i class="bi @(t.Type == TypeTransaction.Achat ? "bi-arrow-down-circle" : "bi-arrow-up-circle") me-1"></i>
+                                @t.Type
+                            </span>
+                        </td>
+                        <td class="text-end">@t.Quantite.ToString("F4")</td>
+                        <td class="text-end">@t.PrixUnitaire.ToString("C2")</td>
+                        <td class="text-end fw-semibold">@t.MontantTotal.ToString("C2")</td>
+                        <td>
+                            <span class="badge @GetStatutBadge(t.Statut)">@t.Statut</span>
+                        </td>
+                        @if (ShowActions)
+                        {
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-primary me-1"
+                                        @onclick="() => OnEdit.InvokeAsync(t)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @onclick="() => OnDelete.InvokeAsync(t)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<Transaction> Transactions { get; set; } = new();
+    [Parameter] public bool ShowActions { get; set; } = true;
+    [Parameter] public EventCallback<Transaction> OnEdit { get; set; }
+    [Parameter] public EventCallback<Transaction> OnDelete { get; set; }
+
+    private string GetStatutBadge(StatutTransaction s) => s switch
+    {
+        StatutTransaction.Confirmee => "bg-success",
+        StatutTransaction.En_attente => "bg-warning text-dark",
+        StatutTransaction.Annulee => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+}

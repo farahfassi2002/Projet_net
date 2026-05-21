@@ -1,0 +1,29 @@
+@* Composant réutilisable pour afficher un indicateur clé de performance *@
+
+<div class="card h-100 shadow-sm kpi-card @CssClass">
+    <div class="card-body d-flex align-items-center gap-3">
+        <div class="kpi-icon rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+             style="background-color: @IconBg; color: @IconColor; width:52px; height:52px; font-size:1.4rem;">
+            <i class="bi @Icon"></i>
+        </div>
+        <div class="overflow-hidden">
+            <div class="text-muted small text-truncate">@Label</div>
+            <div class="fw-bold fs-5 text-truncate" style="color: @ValueColor">@Value</div>
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <div class="text-muted" style="font-size:0.75rem">@Subtitle</div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; } = "bi-info-circle";
+    [Parameter] public string IconBg { get; set; } = "#e3f2fd";
+    [Parameter] public string IconColor { get; set; } = "#1565c0";
+    [Parameter] public string ValueColor { get; set; } = "#212529";
+    [Parameter] public string? CssClass { get; set; }
+}
