@@ -1,0 +1,235 @@
+@page "/actifs"
+@attribute [Authorize]
+@inject IActifService ActifSvc
+@inject ITransactionService TransactionSvc
+@inject IInvestisseurService InvestisseurSvc
+@inject AuthenticationStateProvider AuthState
+@inject NotificationService Notify
+
+<PageTitle>Actifs — Portefeuille</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">
+        <i class="bi bi-briefcase-fill me-2 text-primary"></i>Gestion des actifs
+    </h4>
+</div>
+
+<!-- Filtres de recherche -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <input value="@_search" @oninput="OnSearchInput"
+                       class="form-control" placeholder="🔍 Rechercher par nom ou symbole…" />
+            </div>
+            <div class="col-md-4">
+                <select @bind="_typeFiltre" @bind:after="FiltrerActifs" class="form-select">
+                    <option value="">Tous les types</option>
+                    @foreach (var t in Enum.GetValues<TypeActif>())
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-secondary w-100" @onclick="ResetFiltres">
+                    <i class="bi bi-x-circle me-1"></i>Reset
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Grille des actifs -->
+@if (_loading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+else if (!_actifsFiltres.Any())
+{
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-search fs-1 d-block mb-2"></i>
+        Aucun actif trouvé.
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var actif in _actifsFiltres)
+        {
+            <div class="col-sm-6 col-lg-4 col-xl-3">
+                <ActifCard Actif="actif"
+                           OnAcheter="OuvrirModalAchat"
+                           OnVendre="OuvrirModalVente" />
+            </div>
+        }
+    </div>
+}
+
+<!-- Modal Achat / Vente -->
+@if (_actifSelectionne != null)
+{
+    <div class="modal show d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow">
+                <div class="modal-header @(_modeTransaction == TypeTransaction.Achat ? "bg-success text-white" : "bg-danger text-white")">
+                    <h5 class="modal-title">
+                        <i class="bi @(_modeTransaction == TypeTransaction.Achat ? "bi-cart-plus" : "bi-cash-stack") me-2"></i>
+                        @_modeTransaction — @_actifSelectionne.Symbole
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="FermerModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_erreurModal))
+                    {
+                        <div class="alert alert-danger py-2">@_erreurModal</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">Prix unitaire (€)</label>
+                        <input type="number" @bind="_prixTransaction" class="form-control" step="0.01" min="0.0001" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Quantité</label>
+                        <input type="number" @bind="_quantiteTransaction" class="form-control" step="0.0001" min="0.0001" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Statut</label>
+                        <select @bind="_statutTransaction" class="form-select">
+                            @foreach (var s in Enum.GetValues<StatutTransaction>())
+                            {
+                                <option value="@s">@s</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes (optionnel)</label>
+                        <textarea @bind="_notesTransaction" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="alert alert-light py-2 mb-0">
+                        <strong>Montant total : </strong>
+                        @((_prixTransaction * _quantiteTransaction).ToString("C2"))
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="FermerModal">Annuler</button>
+                    <button class="btn @(_modeTransaction == TypeTransaction.Achat ? "btn-success" : "btn-danger")"
+                            @onclick="ValiderTransaction" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Confirmer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<RadzenNotification />
+
+@code {
+    bool _loading = true;
+    bool _saving;
+    List<Actif> _actifs = new();
+    List<Actif> _actifsFiltres = new();
+    string _search = "";
+    string _typeFiltre = "";
+
+    Actif? _actifSelectionne;
+    TypeTransaction _modeTransaction;
+    float _prixTransaction;
+    float _quantiteTransaction = 1f;
+    StatutTransaction _statutTransaction = StatutTransaction.Confirmee;
+    string _notesTransaction = "";
+    string _erreurModal = "";
+
+    Investisseur? _investisseur;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (uid != null)
+            _investisseur = await InvestisseurSvc.GetInvestisseurByUserIdAsync(uid);
+
+        _actifs = await ActifSvc.GetActifsAsync();
+        _actifsFiltres = _actifs;
+        _loading = false;
+    }
+
+    void OnSearchInput(ChangeEventArgs e) { _search = e.Value?.ToString() ?? ""; FiltrerActifs(); }
+
+    void FiltrerActifs()
+    {
+        _actifsFiltres = _actifs
+            .Where(a =>
+                (string.IsNullOrEmpty(_search) || a.Nom.Contains(_search, StringComparison.OrdinalIgnoreCase) || a.Symbole.Contains(_search, StringComparison.OrdinalIgnoreCase))
+                && (string.IsNullOrEmpty(_typeFiltre) || a.Type.ToString() == _typeFiltre)
+            ).ToList();
+    }
+
+    void ResetFiltres() { _search = ""; _typeFiltre = ""; FiltrerActifs(); }
+
+    void OuvrirModalAchat(Actif actif)
+    {
+        _actifSelectionne = actif;
+        _modeTransaction = TypeTransaction.Achat;
+        _prixTransaction = actif.PrixActuel;
+        _quantiteTransaction = 1f;
+        _erreurModal = "";
+    }
+
+    void OuvrirModalVente(Actif actif)
+    {
+        _actifSelectionne = actif;
+        _modeTransaction = TypeTransaction.Vente;
+        _prixTransaction = actif.PrixActuel;
+        _quantiteTransaction = 1f;
+        _erreurModal = "";
+    }
+
+    void FermerModal() { _actifSelectionne = null; _erreurModal = ""; }
+
+    async Task ValiderTransaction()
+    {
+        if (_investisseur == null) { _erreurModal = "Profil investisseur introuvable."; return; }
+        if (_prixTransaction <= 0 || _quantiteTransaction <= 0) { _erreurModal = "Prix et quantité doivent être positifs."; return; }
+
+        float montant = _prixTransaction * _quantiteTransaction;
+        if (_modeTransaction == TypeTransaction.Achat && montant > _investisseur.BudgetDisponible)
+        {
+            _erreurModal = $"Budget insuffisant. Disponible : {_investisseur.BudgetDisponible:C2}";
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var tx = new Transaction
+            {
+                InvestisseurId = _investisseur.InvestisseurId,
+                ActifId = _actifSelectionne!.Id,
+                Type = _modeTransaction,
+                Quantite = _quantiteTransaction,
+                PrixUnitaire = _prixTransaction,
+                MontantTotal = montant,
+                Statut = _statutTransaction,
+                Notes = _notesTransaction
+            };
+            await TransactionSvc.AjouterTransactionAsync(tx);
+
+            // Rafraîchir l'investisseur
+            _investisseur = await InvestisseurSvc.GetInvestisseurByUserIdAsync(
+                (await AuthState.GetAuthenticationStateAsync())
+                    .User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "");
+
+            Notify.Notify(NotificationSeverity.Success, "Succès", $"Transaction {_modeTransaction} confirmée !");
+            FermerModal();
+        }
+        catch (Exception ex)
+        {
+            _erreurModal = ex.Message;
+        }
+        _saving = false;
+    }
+}

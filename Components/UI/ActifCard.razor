@@ -1,0 +1,54 @@
+@* Composant carte affichant un résumé d'un actif *@
+
+<div class="card h-100 shadow-sm actif-card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+                <span class="badge @GetTypeBadgeClass() mb-1">@Actif.Type</span>
+                <h6 class="card-title mb-0 fw-bold">@Actif.Symbole</h6>
+                <small class="text-muted">@Actif.Nom</small>
+            </div>
+            <div class="text-end">
+                <div class="fw-bold text-primary">@Actif.PrixActuel.ToString("C2")</div>
+                <small class="@(GetVariation() >= 0 ? "text-success" : "text-danger")">
+                    <i class="bi @(GetVariation() >= 0 ? "bi-arrow-up" : "bi-arrow-down")"></i>
+                    @Math.Abs(GetVariation()).ToString("F2")%
+                </small>
+            </div>
+        </div>
+
+        @if (ShowActions)
+        {
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-sm btn-success flex-grow-1" @onclick="() => OnAcheter.InvokeAsync(Actif)">
+                    <i class="bi bi-cart-plus me-1"></i>Acheter
+                </button>
+                <button class="btn btn-sm btn-outline-danger flex-grow-1" @onclick="() => OnVendre.InvokeAsync(Actif)">
+                    <i class="bi bi-cash-stack me-1"></i>Vendre
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Actif Actif { get; set; } = null!;
+    [Parameter] public bool ShowActions { get; set; } = true;
+    [Parameter] public EventCallback<Actif> OnAcheter { get; set; }
+    [Parameter] public EventCallback<Actif> OnVendre { get; set; }
+
+    private float GetVariation()
+    {
+        if (Actif.PrixAchatMoyen == 0) return 0;
+        return ((Actif.PrixActuel - Actif.PrixAchatMoyen) / Actif.PrixAchatMoyen) * 100f;
+    }
+
+    private string GetTypeBadgeClass() => Actif.Type switch
+    {
+        TypeActif.Action => "bg-primary",
+        TypeActif.CryptoMonnaie => "bg-warning text-dark",
+        TypeActif.ETF => "bg-info text-dark",
+        TypeActif.Obligation => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+}
