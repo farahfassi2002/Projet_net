@@ -1,6 +1,7 @@
 @page "/actifs"
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 @inject IActifService ActifSvc
 @inject ITransactionService TransactionSvc
 @inject IInvestisseurService InvestisseurSvc
@@ -22,16 +23,31 @@
     }
 </div>
 
+<!-- Bandeau indicateur de rôle -->
+@if (_isAdmin)
+{
+    <div class="alert alert-success mb-3">
+        <i class="bi bi-shield-lock-fill me-2"></i>
+        <strong>Mode Administrateur</strong> - Vous pouvez créer, modifier et supprimer des actifs
+    </div>
+}
+else
+{
+    <div class="alert alert-info mb-3">
+        <i class="bi bi-person me-2"></i>
+        <strong>Mode Investisseur</strong> - Vous pouvez acheter et vendre des actifs
+    </div>
+}
+
 <!-- Filtres de recherche -->
 <div class="card shadow-sm mb-4">
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-6">
-                <input value="@_search" @oninput="OnSearchInput"
-                       class="form-control" placeholder="🔍 Rechercher par nom ou symbole…" />
+                <input @bind="_search" @bind:event="oninput" class="form-control" placeholder="Rechercher par nom ou symbole..." />
             </div>
             <div class="col-md-4">
-                <select @bind="_typeFiltre" @bind:after="FiltrerActifs" class="form-select">
+                <select @bind="_typeFiltre" class="form-select">
                     <option value="">Tous les types</option>
                     @foreach (var t in Enum.GetValues<TypeActif>())
                     {
@@ -55,7 +71,7 @@
         <div class="spinner-border text-primary" role="status"></div>
     </div>
 }
-else if (!_actifsFiltres.Any())
+else if (_actifsFiltres.Count == 0)
 {
     <div class="text-center text-muted py-5">
         <i class="bi bi-search fs-1 d-block mb-2"></i>
@@ -68,76 +84,77 @@ else
         @foreach (var actif in _actifsFiltres)
         {
             <div class="col-sm-6 col-lg-4 col-xl-3">
-                <div class="card h-100 shadow-sm position-relative">
+                <div class="card h-100 shadow-sm">
                     @if (_isAdmin)
                     {
-                        <div class="position-absolute top-0 end-0 p-2">
-                            <button class="btn btn-sm btn-outline-warning me-1" @onclick="() => OpenEditModal(actif)" title="Modifier">
-                                <i class="bi bi-pencil"></i>
+                        <div class="card-header bg-white text-end border-bottom-0 pb-0">
+                            <button class="btn btn-sm btn-warning me-2" @onclick="() => OpenEditModal(actif)">
+                                <i class="bi bi-pencil me-1"></i>Modifier
                             </button>
-                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteActif(actif)" title="Supprimer">
-                                <i class="bi bi-trash"></i>
+                            <button class="btn btn-sm btn-danger" @onclick="() => DeleteActif(actif)">
+                                <i class="bi bi-trash me-1"></i>Supprimer
                             </button>
                         </div>
                     }
-                    <ActifCard Actif="actif"
-                               OnAcheter="OuvrirModalAchat"
-                               OnVendre="OuvrirModalVente" />
+                    <div class="card-body text-center">
+                        <span class="badge bg-secondary mb-2">@actif.Type</span>
+                        <h5 class="fw-bold mb-1">@actif.Symbole</h5>
+                        <h6 class="text-muted mb-3">@actif.Nom</h6>
+                        <div class="mb-3">
+                            <span class="fs-4 fw-bold text-primary">@actif.PrixActuel.ToString("F2") DT</span>
+                            @{
+                                var variation = actif.PrixAchatMoyen > 0 ? ((actif.PrixActuel - actif.PrixAchatMoyen) / actif.PrixAchatMoyen * 100) : 0;
+                            }
+                            <span class="badge @(variation >= 0 ? "bg-success" : "bg-danger") ms-2">
+                                @(variation >= 0 ? "+" : "")@variation.ToString("F2")%
+                            </span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-danger flex-grow-1" @onclick="() => OuvrirModalVente(actif)">
+                                <i class="bi bi-cash-stack me-1"></i>Vendre
+                            </button>
+                            <button class="btn btn-sm btn-outline-success flex-grow-1" @onclick="() => OuvrirModalAchat(actif)">
+                                <i class="bi bi-cart-plus me-1"></i>Acheter
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         }
     </div>
 }
 
-<!-- Modal Achat / Vente -->
-@if (_actifSelectionne != null)
+<!-- Modal Achat -->
+@if (_actifSelectionne != null && _modeTransaction == "Achat")
 {
-    <div class="modal show d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
+    <div class="modal show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5); z-index: 1050">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content shadow">
-                <div class="modal-header @(_modeTransaction == TypeTransaction.Achat ? "bg-success text-white" : "bg-danger text-white")">
-                    <h5 class="modal-title">
-                        <i class="bi @(_modeTransaction == TypeTransaction.Achat ? "bi-cart-plus" : "bi-cash-stack") me-2"></i>
-                        @_modeTransaction — @_actifSelectionne.Symbole
-                    </h5>
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Achat - @_actifSelectionne.Symbole</h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="FermerModal"></button>
                 </div>
                 <div class="modal-body">
                     @if (!string.IsNullOrEmpty(_erreurModal))
                     {
-                        <div class="alert alert-danger py-2">@_erreurModal</div>
+                        <div class="alert alert-danger">@_erreurModal</div>
                     }
                     <div class="mb-3">
                         <label class="form-label">Prix unitaire (DT)</label>
-                        <input type="number" @bind="_prixTransaction" class="form-control" step="0.01" min="0.0001" />
+                        <input type="number" @bind="_prixTransaction" class="form-control" step="0.01" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Quantité</label>
-                        <input type="number" @bind="_quantiteTransaction" class="form-control" step="0.0001" min="0.0001" />
+                        <input type="number" @bind="_quantiteTransaction" class="form-control" step="0.0001" />
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Statut</label>
-                        <select @bind="_statutTransaction" class="form-select">
-                            @foreach (var s in Enum.GetValues<StatutTransaction>())
-                            {
-                                <option value="@s">@s</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Notes (optionnel)</label>
-                        <textarea @bind="_notesTransaction" class="form-control" rows="2"></textarea>
-                    </div>
-                    <div class="alert alert-light py-2 mb-0">
-                        <strong>Montant total : </strong>
-                        @((_prixTransaction * _quantiteTransaction).ToString("F2")) DT
+                    <div class="alert alert-light">
+                        <strong>Montant total :</strong> @((_prixTransaction * _quantiteTransaction).ToString("F2")) DT
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="FermerModal">Annuler</button>
-                    <button class="btn @(_modeTransaction == TypeTransaction.Achat ? "btn-success" : "btn-danger")"
-                            @onclick="ValiderTransaction" disabled="@_saving">
-                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    <button class="btn btn-success" @onclick="ValiderAchat" disabled="@_savingTransaction">
+                        @if (_savingTransaction) { <span class="spinner-border spinner-border-sm me-1"></span> }
                         Confirmer
                     </button>
                 </div>
@@ -146,23 +163,59 @@ else
     </div>
 }
 
-<!-- Modal Création/Modification d'actif (Admin seulement) -->
-@if (_showActifModal && _isAdmin)
+<!-- Modal Vente -->
+@if (_actifSelectionne != null && _modeTransaction == "Vente")
 {
     <div class="modal show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5); z-index: 1050">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Vente - @_actifSelectionne.Symbole</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="FermerModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_erreurModal))
+                    {
+                        <div class="alert alert-danger">@_erreurModal</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">Prix unitaire (DT)</label>
+                        <input type="number" @bind="_prixTransaction" class="form-control" step="0.01" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Quantité</label>
+                        <input type="number" @bind="_quantiteTransaction" class="form-control" step="0.0001" />
+                    </div>
+                    <div class="alert alert-light">
+                        <strong>Montant total :</strong> @((_prixTransaction * _quantiteTransaction).ToString("F2")) DT
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="FermerModal">Annuler</button>
+                    <button class="btn btn-danger" @onclick="ValiderVente" disabled="@_savingTransaction">
+                        @if (_savingTransaction) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Confirmer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal Création/Modification d'actif -->
+@if (_showActifModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5); z-index: 1060">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">
-                        <i class="bi @(_isEditActif ? "bi-pencil-square" : "bi-plus-circle") me-2"></i>
-                        @(_isEditActif ? "Modifier" : "Nouvel") actif
-                    </h5>
+                    <h5 class="modal-title">@(_isEditActif ? "Modifier" : "Nouvel") actif</h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="CloseActifModal"></button>
                 </div>
                 <div class="modal-body">
                     @if (!string.IsNullOrEmpty(_actifErrorMessage))
                     {
-                        <div class="alert alert-danger py-2">@_actifErrorMessage</div>
+                        <div class="alert alert-danger">@_actifErrorMessage</div>
                     }
                     <div class="mb-3">
                         <label class="form-label fw-bold">Symbole *</label>
@@ -175,10 +228,10 @@ else
                     <div class="mb-3">
                         <label class="form-label fw-bold">Type</label>
                         <select @bind="_currentActif.Type" class="form-select">
-                            @foreach (var t in Enum.GetValues<TypeActif>())
-                            {
-                                <option value="@t">@t</option>
-                            }
+                            <option value="Action">Action</option>
+                            <option value="Obligation">Obligation</option>
+                            <option value="ETF">ETF</option>
+                            <option value="CryptoMonnaie">CryptoMonnaie</option>
                         </select>
                     </div>
                     <div class="row">
@@ -202,10 +255,7 @@ else
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="CloseActifModal">Annuler</button>
-                    <button class="btn btn-primary" @onclick="SaveActif" disabled="@_savingActif">
-                        @if (_savingActif) { <span class="spinner-border spinner-border-sm me-1"></span> }
-                        Enregistrer
-                    </button>
+                    <button class="btn btn-primary" @onclick="SaveActif">Enregistrer</button>
                 </div>
             </div>
         </div>
@@ -215,41 +265,40 @@ else
 <RadzenNotification />
 
 @code {
-    bool _loading = true;
-    bool _saving;
-    bool _isAdmin = false;
-    List<Actif> _actifs = new();
-    List<Actif> _actifsFiltres = new();
-    string _search = "";
-    string _typeFiltre = "";
+    private bool _loading = true;
+    private bool _savingTransaction = false;
+    private bool _isAdmin = false;
+    private List<Actif> _actifs = new();
+    private List<Actif> _actifsFiltres = new();
+    private string _search = "";
+    private string _typeFiltre = "";
 
-    Actif? _actifSelectionne;
-    TypeTransaction _modeTransaction;
-    float _prixTransaction;
-    float _quantiteTransaction = 1f;
-    StatutTransaction _statutTransaction = StatutTransaction.Confirmee;
-    string _notesTransaction = "";
-    string _erreurModal = "";
+    // Transaction
+    private Actif? _actifSelectionne;
+    private string _modeTransaction = "";
+    private float _prixTransaction;
+    private float _quantiteTransaction = 1f;
+    private string _erreurModal = "";
+    private Investisseur? _investisseur;
 
-    Investisseur? _investisseur;
-    
     // Admin CRUD
-    bool _showActifModal = false;
-    bool _isEditActif = false;
-    bool _savingActif = false;
-    string _actifErrorMessage = "";
-    Actif _currentActif = new();
+    private bool _showActifModal = false;
+    private bool _isEditActif = false;
+    private string _actifErrorMessage = "";
+    private Actif _currentActif = new();
 
     protected override async Task OnInitializedAsync()
     {
-        var auth = await AuthState.GetAuthenticationStateAsync();
-        var user = auth.User;
-        var uid = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var user = authState.User;
         
         _isAdmin = user.IsInRole("Administrateur");
         
+        var uid = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (uid != null)
+        {
             _investisseur = await InvestisseurSvc.GetInvestisseurByUserIdAsync(uid);
+        }
 
         await LoadActifs();
         _loading = false;
@@ -258,87 +307,179 @@ else
     private async Task LoadActifs()
     {
         _actifs = await ActifSvc.GetActifsAsync();
-        _actifsFiltres = _actifs;
+        _actifsFiltres = _actifs.ToList();
         StateHasChanged();
     }
 
-    void OnSearchInput(ChangeEventArgs e) { _search = e.Value?.ToString() ?? ""; FiltrerActifs(); }
-
-    void FiltrerActifs()
+    private void ResetFiltres()
     {
-        _actifsFiltres = _actifs
-            .Where(a =>
-                (string.IsNullOrEmpty(_search) || a.Nom.Contains(_search, StringComparison.OrdinalIgnoreCase) || a.Symbole.Contains(_search, StringComparison.OrdinalIgnoreCase))
-                && (string.IsNullOrEmpty(_typeFiltre) || a.Type.ToString() == _typeFiltre)
-            ).ToList();
+        _search = "";
+        _typeFiltre = "";
+        FiltrerActifs();
+    }
+    
+    private void FiltrerActifs()
+    {
+        if (string.IsNullOrEmpty(_search) && string.IsNullOrEmpty(_typeFiltre))
+        {
+            _actifsFiltres = _actifs.ToList();
+        }
+        else
+        {
+            _actifsFiltres = _actifs
+                .Where(a => (string.IsNullOrEmpty(_search) || 
+                            a.Nom.Contains(_search, StringComparison.OrdinalIgnoreCase) || 
+                            a.Symbole.Contains(_search, StringComparison.OrdinalIgnoreCase)) &&
+                            (string.IsNullOrEmpty(_typeFiltre) || a.Type.ToString() == _typeFiltre))
+                .ToList();
+        }
+        StateHasChanged();
     }
 
-    void ResetFiltres() { _search = ""; _typeFiltre = ""; FiltrerActifs(); }
-
-    void OuvrirModalAchat(Actif actif)
+    private void OuvrirModalAchat(Actif actif)
     {
         _actifSelectionne = actif;
-        _modeTransaction = TypeTransaction.Achat;
+        _modeTransaction = "Achat";
         _prixTransaction = actif.PrixActuel;
         _quantiteTransaction = 1f;
         _erreurModal = "";
     }
 
-    void OuvrirModalVente(Actif actif)
+    private void OuvrirModalVente(Actif actif)
     {
         _actifSelectionne = actif;
-        _modeTransaction = TypeTransaction.Vente;
+        _modeTransaction = "Vente";
         _prixTransaction = actif.PrixActuel;
         _quantiteTransaction = 1f;
         _erreurModal = "";
     }
 
-    void FermerModal() { _actifSelectionne = null; _erreurModal = ""; }
-
-    async Task ValiderTransaction()
+    private void FermerModal()
     {
-        if (_investisseur == null) { _erreurModal = "Profil investisseur introuvable."; return; }
-        if (_prixTransaction <= 0 || _quantiteTransaction <= 0) { _erreurModal = "Prix et quantité doivent être positifs."; return; }
+        _actifSelectionne = null;
+        _erreurModal = "";
+    }
 
+    private async Task ValiderAchat()
+    {
+        if (_investisseur == null)
+        {
+            _erreurModal = "Profil investisseur introuvable.";
+            return;
+        }
+        
+        if (_prixTransaction <= 0 || _quantiteTransaction <= 0)
+        {
+            _erreurModal = "Prix et quantité doivent être positifs.";
+            return;
+        }
+        
         float montant = _prixTransaction * _quantiteTransaction;
-        if (_modeTransaction == TypeTransaction.Achat && montant > _investisseur.BudgetDisponible)
+        if (montant > _investisseur.BudgetDisponible)
         {
             _erreurModal = $"Budget insuffisant. Disponible : {_investisseur.BudgetDisponible.ToString("F2")} DT";
             return;
         }
-
-        _saving = true;
+        
+        _savingTransaction = true;
+        
         try
         {
-            var tx = new Transaction
+            var transaction = new Transaction
             {
                 InvestisseurId = _investisseur.InvestisseurId,
                 ActifId = _actifSelectionne!.Id,
-                Type = _modeTransaction,
+                Type = TypeTransaction.Achat,
                 Quantite = _quantiteTransaction,
                 PrixUnitaire = _prixTransaction,
                 MontantTotal = montant,
-                Statut = _statutTransaction,
-                Notes = _notesTransaction
+                Statut = StatutTransaction.Confirmee,
+                Notes = $"Achat de {_quantiteTransaction} {_actifSelectionne.Symbole}",
+                DateTransaction = DateTime.Now
             };
-            await TransactionSvc.AjouterTransactionAsync(tx);
-
-            _investisseur = await InvestisseurSvc.GetInvestisseurByUserIdAsync(
-                (await AuthState.GetAuthenticationStateAsync())
-                    .User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "");
-
-            Notify.Notify(NotificationSeverity.Success, "Succès", $"Transaction {_modeTransaction} confirmée !");
+            
+            await TransactionSvc.AjouterTransactionAsync(transaction);
+            
+            // Rafraîchir l'investisseur
+            _investisseur = await InvestisseurSvc.GetInvestisseurByIdAsync(_investisseur.InvestisseurId);
+            
+            Notify.Notify(NotificationSeverity.Success, "Achat", $"Achat de {_quantiteTransaction} {_actifSelectionne.Symbole} pour {montant:F2} DT réalisé!");
             FermerModal();
         }
         catch (Exception ex)
         {
             _erreurModal = ex.Message;
         }
-        _saving = false;
+        finally
+        {
+            _savingTransaction = false;
+        }
     }
-    
-    // Admin CRUD Methods
-    void OpenCreateModal()
+
+    private async Task ValiderVente()
+    {
+        if (_investisseur == null)
+        {
+            _erreurModal = "Profil investisseur introuvable.";
+            return;
+        }
+        
+        if (_prixTransaction <= 0 || _quantiteTransaction <= 0)
+        {
+            _erreurModal = "Prix et quantité doivent être positifs.";
+            return;
+        }
+        
+        float montant = _prixTransaction * _quantiteTransaction;
+        
+        // Vérifier si l'investisseur possède assez de cet actif
+        var transactions = await TransactionSvc.GetTransactionsByInvestisseurAsync(_investisseur.InvestisseurId);
+        var actifTransactions = transactions.Where(t => t.ActifId == _actifSelectionne!.Id);
+        float quantitePossedee = actifTransactions.Sum(t => t.Type == TypeTransaction.Achat ? t.Quantite : -t.Quantite);
+        
+        if (_quantiteTransaction > quantitePossedee)
+        {
+            _erreurModal = $"Quantité insuffisante. Vous possédez {quantitePossedee} {_actifSelectionne.Symbole}";
+            return;
+        }
+        
+        _savingTransaction = true;
+        
+        try
+        {
+            var transaction = new Transaction
+            {
+                InvestisseurId = _investisseur.InvestisseurId,
+                ActifId = _actifSelectionne!.Id,
+                Type = TypeTransaction.Vente,
+                Quantite = _quantiteTransaction,
+                PrixUnitaire = _prixTransaction,
+                MontantTotal = montant,
+                Statut = StatutTransaction.Confirmee,
+                Notes = $"Vente de {_quantiteTransaction} {_actifSelectionne.Symbole}",
+                DateTransaction = DateTime.Now
+            };
+            
+            await TransactionSvc.AjouterTransactionAsync(transaction);
+            
+            // Rafraîchir l'investisseur
+            _investisseur = await InvestisseurSvc.GetInvestisseurByIdAsync(_investisseur.InvestisseurId);
+            
+            Notify.Notify(NotificationSeverity.Success, "Vente", $"Vente de {_quantiteTransaction} {_actifSelectionne.Symbole} pour {montant:F2} DT réalisée!");
+            FermerModal();
+        }
+        catch (Exception ex)
+        {
+            _erreurModal = ex.Message;
+        }
+        finally
+        {
+            _savingTransaction = false;
+        }
+    }
+
+    // Admin Methods
+    private void OpenCreateModal()
     {
         _currentActif = new Actif();
         _isEditActif = false;
@@ -346,7 +487,7 @@ else
         _showActifModal = true;
     }
 
-    void OpenEditModal(Actif actif)
+    private void OpenEditModal(Actif actif)
     {
         _currentActif = new Actif
         {
@@ -364,13 +505,13 @@ else
         _showActifModal = true;
     }
 
-    void CloseActifModal()
+    private void CloseActifModal()
     {
         _showActifModal = false;
         _currentActif = new Actif();
     }
 
-    async Task SaveActif()
+    private async Task SaveActif()
     {
         if (string.IsNullOrWhiteSpace(_currentActif.Symbole) || string.IsNullOrWhiteSpace(_currentActif.Nom))
         {
@@ -378,7 +519,6 @@ else
             return;
         }
 
-        _savingActif = true;
         try
         {
             if (_isEditActif)
@@ -398,12 +538,11 @@ else
         {
             _actifErrorMessage = ex.Message;
         }
-        _savingActif = false;
     }
 
-    async Task DeleteActif(Actif actif)
+    private async Task DeleteActif(Actif actif)
     {
-        var confirm = await JS.InvokeAsync<bool>("confirm", $"Supprimer définitivement {actif.Symbole} - {actif.Nom} ?\nAttention: Les transactions liées seront également supprimées.");
+        var confirm = await JS.InvokeAsync<bool>("confirm", $"Supprimer {actif.Symbole} - {actif.Nom} ?");
         if (confirm)
         {
             await ActifSvc.SupprimerActifAsync(actif.Id);
