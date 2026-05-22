@@ -1,31 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "D:\\PortefeuilleInvestissement (3)\\PortefeuilleInvestissement\\PortefeuilleInvestissement.csproj": {}
+    "C:\\Users\\PC\\Projet_net\\PortefeuilleInvestissement.csproj": {}
   },
   "projects": {
-    "D:\\PortefeuilleInvestissement (3)\\PortefeuilleInvestissement\\PortefeuilleInvestissement.csproj": {
+    "C:\\Users\\PC\\Projet_net\\PortefeuilleInvestissement.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\PortefeuilleInvestissement (3)\\PortefeuilleInvestissement\\PortefeuilleInvestissement.csproj",
+        "projectUniqueName": "C:\\Users\\PC\\Projet_net\\PortefeuilleInvestissement.csproj",
         "projectName": "PortefeuilleInvestissement",
-        "projectPath": "D:\\PortefeuilleInvestissement (3)\\PortefeuilleInvestissement\\PortefeuilleInvestissement.csproj",
-        "packagesPath": "C:\\Users\\fassi\\.nuget\\packages\\",
-        "outputPath": "D:\\PortefeuilleInvestissement (3)\\PortefeuilleInvestissement\\obj\\",
+        "projectPath": "C:\\Users\\PC\\Projet_net\\PortefeuilleInvestissement.csproj",
+        "packagesPath": "C:\\Users\\PC\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\PC\\Projet_net\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\fassi\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Users\\PC\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -53,7 +47,7 @@
             "Microsoft.AspNetCore.App.Internal.Assets": {
               "suppressParent": "All",
               "target": "Package",
-              "version": "[10.0.3, )",
+              "version": "[10.0.2, )",
               "autoReferenced": true
             },
             "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
@@ -94,7 +88,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.103/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
