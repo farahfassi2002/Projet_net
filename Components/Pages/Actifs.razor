@@ -1,10 +1,12 @@
 @page "/actifs"
 @attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
 @inject IActifService ActifSvc
 @inject ITransactionService TransactionSvc
 @inject IInvestisseurService InvestisseurSvc
 @inject AuthenticationStateProvider AuthState
 @inject NotificationService Notify
+@inject IJSRuntime JS
 
 <PageTitle>Actifs — Portefeuille</PageTitle>
 
@@ -12,6 +14,12 @@
     <h4 class="fw-bold mb-0">
         <i class="bi bi-briefcase-fill me-2 text-primary"></i>Gestion des actifs
     </h4>
+    @if (_isAdmin)
+    {
+        <button class="btn btn-primary" @onclick="OpenCreateModal">
+            <i class="bi bi-plus-circle me-1"></i>Nouvel actif
+        </button>
+    }
 </div>
 
 <!-- Filtres de recherche -->
@@ -60,9 +68,22 @@ else
         @foreach (var actif in _actifsFiltres)
         {
             <div class="col-sm-6 col-lg-4 col-xl-3">
-                <ActifCard Actif="actif"
-                           OnAcheter="OuvrirModalAchat"
-                           OnVendre="OuvrirModalVente" />
+                <div class="card h-100 shadow-sm position-relative">
+                    @if (_isAdmin)
+                    {
+                        <div class="position-absolute top-0 end-0 p-2">
+                            <button class="btn btn-sm btn-outline-warning me-1" @onclick="() => OpenEditModal(actif)" title="Modifier">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteActif(actif)" title="Supprimer">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    }
+                    <ActifCard Actif="actif"
+                               OnAcheter="OuvrirModalAchat"
+                               OnVendre="OuvrirModalVente" />
+                </div>
             </div>
         }
     </div>
@@ -87,7 +108,7 @@ else
                         <div class="alert alert-danger py-2">@_erreurModal</div>
                     }
                     <div class="mb-3">
-                        <label class="form-label">Prix unitaire (€)</label>
+                        <label class="form-label">Prix unitaire (DT)</label>
                         <input type="number" @bind="_prixTransaction" class="form-control" step="0.01" min="0.0001" />
                     </div>
                     <div class="mb-3">
@@ -109,7 +130,7 @@ else
                     </div>
                     <div class="alert alert-light py-2 mb-0">
                         <strong>Montant total : </strong>
-                        @((_prixTransaction * _quantiteTransaction).ToString("C2"))
+                        @((_prixTransaction * _quantiteTransaction).ToString("F2")) DT
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -125,11 +146,78 @@ else
     </div>
 }
 
+<!-- Modal Création/Modification d'actif (Admin seulement) -->
+@if (_showActifModal && _isAdmin)
+{
+    <div class="modal show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5); z-index: 1050">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi @(_isEditActif ? "bi-pencil-square" : "bi-plus-circle") me-2"></i>
+                        @(_isEditActif ? "Modifier" : "Nouvel") actif
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseActifModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_actifErrorMessage))
+                    {
+                        <div class="alert alert-danger py-2">@_actifErrorMessage</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Symbole *</label>
+                        <input type="text" @bind="_currentActif.Symbole" class="form-control" placeholder="ex: AAPL" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nom *</label>
+                        <input type="text" @bind="_currentActif.Nom" class="form-control" placeholder="ex: Apple Inc." />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Type</label>
+                        <select @bind="_currentActif.Type" class="form-select">
+                            @foreach (var t in Enum.GetValues<TypeActif>())
+                            {
+                                <option value="@t">@t</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Prix actuel (DT)</label>
+                            <input type="number" @bind="_currentActif.PrixActuel" class="form-control" step="0.001" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Prix achat moyen (DT)</label>
+                            <input type="number" @bind="_currentActif.PrixAchatMoyen" class="form-control" step="0.001" />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Quantité disponible</label>
+                        <input type="number" @bind="_currentActif.QuantiteDisponible" class="form-control" step="1" min="0" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea @bind="_currentActif.Description" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseActifModal">Annuler</button>
+                    <button class="btn btn-primary" @onclick="SaveActif" disabled="@_savingActif">
+                        @if (_savingActif) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <RadzenNotification />
 
 @code {
     bool _loading = true;
     bool _saving;
+    bool _isAdmin = false;
     List<Actif> _actifs = new();
     List<Actif> _actifsFiltres = new();
     string _search = "";
@@ -144,17 +232,34 @@ else
     string _erreurModal = "";
 
     Investisseur? _investisseur;
+    
+    // Admin CRUD
+    bool _showActifModal = false;
+    bool _isEditActif = false;
+    bool _savingActif = false;
+    string _actifErrorMessage = "";
+    Actif _currentActif = new();
 
     protected override async Task OnInitializedAsync()
     {
         var auth = await AuthState.GetAuthenticationStateAsync();
-        var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var user = auth.User;
+        var uid = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        
+        _isAdmin = user.IsInRole("Administrateur");
+        
         if (uid != null)
             _investisseur = await InvestisseurSvc.GetInvestisseurByUserIdAsync(uid);
 
+        await LoadActifs();
+        _loading = false;
+    }
+    
+    private async Task LoadActifs()
+    {
         _actifs = await ActifSvc.GetActifsAsync();
         _actifsFiltres = _actifs;
-        _loading = false;
+        StateHasChanged();
     }
 
     void OnSearchInput(ChangeEventArgs e) { _search = e.Value?.ToString() ?? ""; FiltrerActifs(); }
@@ -198,7 +303,7 @@ else
         float montant = _prixTransaction * _quantiteTransaction;
         if (_modeTransaction == TypeTransaction.Achat && montant > _investisseur.BudgetDisponible)
         {
-            _erreurModal = $"Budget insuffisant. Disponible : {_investisseur.BudgetDisponible:C2}";
+            _erreurModal = $"Budget insuffisant. Disponible : {_investisseur.BudgetDisponible.ToString("F2")} DT";
             return;
         }
 
@@ -218,7 +323,6 @@ else
             };
             await TransactionSvc.AjouterTransactionAsync(tx);
 
-            // Rafraîchir l'investisseur
             _investisseur = await InvestisseurSvc.GetInvestisseurByUserIdAsync(
                 (await AuthState.GetAuthenticationStateAsync())
                     .User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "");
@@ -231,5 +335,80 @@ else
             _erreurModal = ex.Message;
         }
         _saving = false;
+    }
+    
+    // Admin CRUD Methods
+    void OpenCreateModal()
+    {
+        _currentActif = new Actif();
+        _isEditActif = false;
+        _actifErrorMessage = "";
+        _showActifModal = true;
+    }
+
+    void OpenEditModal(Actif actif)
+    {
+        _currentActif = new Actif
+        {
+            Id = actif.Id,
+            Symbole = actif.Symbole,
+            Nom = actif.Nom,
+            Type = actif.Type,
+            PrixActuel = actif.PrixActuel,
+            PrixAchatMoyen = actif.PrixAchatMoyen,
+            QuantiteDisponible = actif.QuantiteDisponible,
+            Description = actif.Description
+        };
+        _isEditActif = true;
+        _actifErrorMessage = "";
+        _showActifModal = true;
+    }
+
+    void CloseActifModal()
+    {
+        _showActifModal = false;
+        _currentActif = new Actif();
+    }
+
+    async Task SaveActif()
+    {
+        if (string.IsNullOrWhiteSpace(_currentActif.Symbole) || string.IsNullOrWhiteSpace(_currentActif.Nom))
+        {
+            _actifErrorMessage = "Le symbole et le nom sont requis.";
+            return;
+        }
+
+        _savingActif = true;
+        try
+        {
+            if (_isEditActif)
+            {
+                await ActifSvc.ModifierActifAsync(_currentActif);
+                Notify.Notify(NotificationSeverity.Success, "Succès", $"Actif {_currentActif.Symbole} modifié");
+            }
+            else
+            {
+                await ActifSvc.AjouterActifAsync(_currentActif);
+                Notify.Notify(NotificationSeverity.Success, "Succès", $"Actif {_currentActif.Symbole} créé");
+            }
+            await LoadActifs();
+            CloseActifModal();
+        }
+        catch (Exception ex)
+        {
+            _actifErrorMessage = ex.Message;
+        }
+        _savingActif = false;
+    }
+
+    async Task DeleteActif(Actif actif)
+    {
+        var confirm = await JS.InvokeAsync<bool>("confirm", $"Supprimer définitivement {actif.Symbole} - {actif.Nom} ?\nAttention: Les transactions liées seront également supprimées.");
+        if (confirm)
+        {
+            await ActifSvc.SupprimerActifAsync(actif.Id);
+            Notify.Notify(NotificationSeverity.Success, "Supprimé", $"Actif {actif.Symbole} supprimé");
+            await LoadActifs();
+        }
     }
 }

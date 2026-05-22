@@ -41,24 +41,19 @@
             </NavLink>
         </div>
 
-        <AuthorizeView Roles="Administrateur">
-            <Authorized>
-                <hr class="text-secondary mx-3" />
-                <div class="nav-item px-3">
-                    <span class="nav-link text-muted small">ADMINISTRATION</span>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="/admin/actifs">
-                        <i class="bi bi-pencil-square me-2"></i> Gérer les actifs
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="/admin/utilisateurs">
-                        <i class="bi bi-people-fill me-2"></i> Gérer les utilisateurs
-                    </NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
+<AuthorizeView Roles="Administrateur">
+    <Authorized>
+        <hr class="text-secondary mx-3" />
+        <div class="nav-item px-3">
+            <span class="nav-link text-muted small">ADMINISTRATION</span>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/actifs"> 
+                <i class="bi bi-pencil-square me-2"></i> Gérer les actifs
+            </NavLink>
+        </div>
 
+    </Authorized>
+</AuthorizeView>
     </nav>
 </div>

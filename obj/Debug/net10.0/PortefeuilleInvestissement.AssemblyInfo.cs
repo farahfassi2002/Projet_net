@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PortefeuilleInvestissement")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f68ff5c4f74b15e9adc588f085bd479e91e8ae27")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+630d047adb048be5bd2b02d8bfe5cfcd6044d3cf")]
 [assembly: System.Reflection.AssemblyProductAttribute("PortefeuilleInvestissement")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PortefeuilleInvestissement")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

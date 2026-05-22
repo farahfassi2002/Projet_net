@@ -1,8 +1,12 @@
 @page "/budget"
 @attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using PortefeuilleInvestissement.Models
 @inject IInvestisseurService InvestisseurSvc
 @inject AuthenticationStateProvider AuthState
 @inject NotificationService Notify
+@inject UserManager<ApplicationUser> UserManager
 
 <PageTitle>Budget — Portefeuille</PageTitle>
 
@@ -12,31 +16,85 @@
 
 @if (_loading)
 {
-    <div class="text-center py-5"><div class="spinner-border text-warning" role="status"></div></div>
+    <div class="text-center py-5">
+        <div class="spinner-border text-warning" role="status"></div>
+    </div>
+}
+else if (_isAdmin)
+{
+    <!-- Vue Admin : Liste de tous les investisseurs -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white fw-semibold">
+            <i class="bi bi-people-fill me-2"></i>Tous les budgets des investisseurs
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Investisseur</th>
+                            <th>Budget total (DT)</th>
+                            <th>Budget disponible (DT)</th>
+                            <th>Budget investi (DT)</th>
+                            <th>Utilisation</th>
+                            <th>Points fidélité</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inv in _allInvestisseurs)
+                        {
+                            var user = _users.FirstOrDefault(u => u.Id == inv.UserId);
+                            var budgetInvesti = inv.BudgetTotal - inv.BudgetDisponible;
+                            var tauxUtilisation = inv.BudgetTotal > 0 
+                                ? ((inv.BudgetTotal - inv.BudgetDisponible) / inv.BudgetTotal) * 100f 
+                                : 0f;
+                            <tr>
+                                <td>
+                                    <strong>@user?.Prenom @user?.Nom</strong><br />
+                                    <small class="text-muted">@user?.Email</small>
+                                </td>
+                                <td class="text-end">@inv.BudgetTotal.ToString("F2") DT</td>
+                                <td class="text-end">@inv.BudgetDisponible.ToString("F2") DT</td>
+                                <td class="text-end">@budgetInvesti.ToString("F2") DT</td>
+                                <td>
+                                    <div class="progress" style="height:6px">
+                                        <div class="progress-bar @(tauxUtilisation > 90 ? "bg-danger" : tauxUtilisation > 70 ? "bg-warning" : "bg-success")" 
+                                             style="width:@tauxUtilisation%"></div>
+                                    </div>
+                                    <small>@tauxUtilisation.ToString("F0")%</small>
+                                </td>
+                                <td class="text-end">@inv.PointsFidelite</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 }
 else if (_investisseur == null)
 {
-    <div class="alert alert-warning">Profil investisseur introuvable.</div>
+    <div class="alert alert-warning">Profil investisseur introuvable. Veuillez contacter un administrateur.</div>
 }
 else
 {
-    <!-- Résumé budget -->
+    <!-- Vue normale pour les investisseurs -->
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <KpiCard Label="Budget total alloué"
-                     Value="@_investisseur.BudgetTotal.ToString("C2")"
+                     Value="@_budgetTotalFormatted"
                      Icon="bi-bank2"
                      IconBg="#fff8e1" IconColor="#f57f17" />
         </div>
         <div class="col-md-4">
             <KpiCard Label="Budget disponible"
-                     Value="@_investisseur.BudgetDisponible.ToString("C2")"
+                     Value="@_budgetDisponibleFormatted"
                      Icon="bi-cash-coin"
                      IconBg="#e8f5e9" IconColor="#2e7d32" />
         </div>
         <div class="col-md-4">
             <KpiCard Label="Budget investi"
-                     Value="@((_investisseur.BudgetTotal - _investisseur.BudgetDisponible).ToString("C2"))"
+                     Value="@_budgetInvestiFormatted"
                      Icon="bi-graph-up"
                      IconBg="#e3f2fd" IconColor="#1565c0" />
         </div>
@@ -55,8 +113,8 @@ else
                 </div>
             </div>
             <div class="d-flex justify-content-between mt-1">
-                <small class="text-muted">0 €</small>
-                <small class="text-muted">@_investisseur.BudgetTotal.ToString("C0")</small>
+                <small class="text-muted">0 DT</small>
+                <small class="text-muted">@_investisseur.BudgetTotal.ToString("F0") DT</small>
             </div>
         </div>
     </div>
@@ -73,7 +131,7 @@ else
             }
             <div class="row g-3">
                 <div class="col-md-4">
-                    <label class="form-label">Montant (€)</label>
+                    <label class="form-label">Montant (DT)</label>
                     <input type="number" @bind="_montantAllocation" class="form-control" min="1" step="100" placeholder="ex: 5000" />
                 </div>
                 <div class="col-md-6">
@@ -96,7 +154,7 @@ else
             <i class="bi bi-clock-history text-secondary me-2"></i>Historique des allocations
         </div>
         <div class="card-body p-0">
-            @if (!_historique.Any())
+            @if (_historique.Count == 0)
             {
                 <p class="text-muted text-center py-4">Aucune allocation enregistrée.</p>
             }
@@ -116,7 +174,7 @@ else
                             {
                                 <tr>
                                     <td><small class="text-muted">@b.DateCreation.ToString("dd/MM/yyyy HH:mm")</small></td>
-                                    <td class="text-end fw-semibold text-success">+@b.Montant.ToString("C2")</td>
+                                    <td class="text-end fw-semibold text-success">+@b.Montant.ToString("F2") DT</td>
                                     <td>@b.Description</td>
                                 </tr>
                             }
@@ -131,50 +189,100 @@ else
 <RadzenNotification />
 
 @code {
-    bool _loading = true, _saving;
-    Investisseur? _investisseur;
-    List<BudgetInvestissement> _historique = new();
-    float _montantAllocation;
-    string _descriptionAllocation = "";
-    string _erreur = "";
-    float _tauxUtilisation;
+    private bool _loading = true;
+    private bool _saving = false;
+    private bool _isAdmin = false;
+    
+    private Investisseur? _investisseur;
+    private List<BudgetInvestissement> _historique = new();
+    private List<Investisseur> _allInvestisseurs = new();
+    private List<ApplicationUser> _users = new();
+    
+    private float _montantAllocation;
+    private string _descriptionAllocation = "";
+    private string _erreur = "";
+    private float _tauxUtilisation = 0;
+    
+    private string _budgetTotalFormatted => _investisseur?.BudgetTotal.ToString("F2") + " DT" ?? "0 DT";
+    private string _budgetDisponibleFormatted => _investisseur?.BudgetDisponible.ToString("F2") + " DT" ?? "0 DT";
+    private string _budgetInvestiFormatted => _investisseur != null 
+        ? (_investisseur.BudgetTotal - _investisseur.BudgetDisponible).ToString("F2") + " DT" 
+        : "0 DT";
 
     protected override async Task OnInitializedAsync()
     {
-        var auth = await AuthState.GetAuthenticationStateAsync();
-        var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (uid != null)
+        try
         {
-            _investisseur = await InvestisseurSvc.GetInvestisseurByUserIdAsync(uid);
-            if (_investisseur != null)
+            var auth = await AuthState.GetAuthenticationStateAsync();
+            var user = auth.User;
+            var uid = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            
+            _isAdmin = user.IsInRole("Administrateur");
+            
+            if (_isAdmin)
             {
-                _historique = await InvestisseurSvc.GetHistoriqueBudgetsAsync(_investisseur.InvestisseurId);
-                _tauxUtilisation = _investisseur.BudgetTotal > 0
-                    ? ((_investisseur.BudgetTotal - _investisseur.BudgetDisponible) / _investisseur.BudgetTotal) * 100f
-                    : 0f;
+                _allInvestisseurs = await InvestisseurSvc.GetAllInvestisseursAsync();
+                _users = UserManager.Users.ToList();
+            }
+            else if (uid != null)
+            {
+                _investisseur = await InvestisseurSvc.GetInvestisseurByUserIdAsync(uid);
+                if (_investisseur != null)
+                {
+                    _historique = await InvestisseurSvc.GetHistoriqueBudgetsAsync(_investisseur.InvestisseurId);
+                    if (_investisseur.BudgetTotal > 0)
+                    {
+                        _tauxUtilisation = ((_investisseur.BudgetTotal - _investisseur.BudgetDisponible) / _investisseur.BudgetTotal) * 100f;
+                    }
+                }
             }
         }
-        _loading = false;
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur: {ex.Message}");
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
-    async Task AllouerBudget()
+    private async Task AllouerBudget()
     {
-        if (_montantAllocation <= 0) { _erreur = "Le montant doit être supérieur à 0."; return; }
+        if (_montantAllocation <= 0)
+        {
+            _erreur = "Le montant doit être supérieur à 0.";
+            return;
+        }
+        
         _saving = true;
         _erreur = "";
+        float montantAlloue = _montantAllocation;
+        
         try
         {
             await InvestisseurSvc.AllouerBudgetAsync(_investisseur!.InvestisseurId, _montantAllocation, _descriptionAllocation);
+            
             _investisseur = await InvestisseurSvc.GetInvestisseurByIdAsync(_investisseur.InvestisseurId);
             _historique = await InvestisseurSvc.GetHistoriqueBudgetsAsync(_investisseur!.InvestisseurId);
-            _tauxUtilisation = _investisseur.BudgetTotal > 0
-                ? ((_investisseur.BudgetTotal - _investisseur.BudgetDisponible) / _investisseur.BudgetTotal) * 100f
-                : 0f;
+            
+            if (_investisseur.BudgetTotal > 0)
+            {
+                _tauxUtilisation = ((_investisseur.BudgetTotal - _investisseur.BudgetDisponible) / _investisseur.BudgetTotal) * 100f;
+            }
+            
             _montantAllocation = 0;
             _descriptionAllocation = "";
-            Notify.Notify(NotificationSeverity.Success, "Budget alloué", $"{_montantAllocation:C2} ajouté à votre budget !");
+            
+            Notify.Notify(NotificationSeverity.Success, "Budget alloué", $"{montantAlloue:F2} DT ajouté à votre budget !");
         }
-        catch (Exception ex) { _erreur = ex.Message; }
-        _saving = false;
+        catch (Exception ex)
+        {
+            _erreur = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
     }
 }

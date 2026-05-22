@@ -5,6 +5,7 @@
 @inject IActifService ActifSvc
 @inject AuthenticationStateProvider AuthState
 @inject NotificationService Notify
+@inject IJSRuntime JS
 
 <PageTitle>Transactions — Portefeuille</PageTitle>
 
@@ -12,9 +13,6 @@
     <h4 class="fw-bold mb-0">
         <i class="bi bi-arrow-left-right me-2 text-primary"></i>Historique des opérations
     </h4>
-    <button class="btn btn-primary" @onclick="OuvrirModalAjout">
-        <i class="bi bi-plus-circle me-1"></i>Nouvelle transaction
-    </button>
 </div>
 
 <!-- Filtres -->
@@ -53,7 +51,7 @@
 @if (_transactions.Any())
 {
     <div class="row g-3 mb-4">
-        <div class="col-4">
+        <div class="col-6">
             <div class="card text-center border-0 bg-success bg-opacity-10">
                 <div class="card-body py-2">
                     <div class="fw-bold text-success fs-5">@_transactions.Count(t => t.Type == TypeTransaction.Achat)</div>
@@ -61,19 +59,11 @@
                 </div>
             </div>
         </div>
-        <div class="col-4">
+        <div class="col-6">
             <div class="card text-center border-0 bg-danger bg-opacity-10">
                 <div class="card-body py-2">
                     <div class="fw-bold text-danger fs-5">@_transactions.Count(t => t.Type == TypeTransaction.Vente)</div>
                     <small class="text-muted">Ventes</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-4">
-            <div class="card text-center border-0 bg-primary bg-opacity-10">
-                <div class="card-body py-2">
-                    <div class="fw-bold text-primary fs-5">@_transactions.Sum(t => t.MontantTotal).ToString("C0")</div>
-                    <small class="text-muted">Volume total</small>
                 </div>
             </div>
         </div>
@@ -91,83 +81,52 @@ else
 {
     <div class="card shadow-sm">
         <div class="card-body p-0">
-            <TransactionTable Transactions="_transactions"
-                              OnEdit="OuvrirModalEdit"
-                              OnDelete="SupprimerTransaction" />
-        </div>
-    </div>
-}
-
-<!-- Modal Ajout / Édition -->
-@if (_showModal)
-{
-    <div class="modal show d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content shadow">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">
-                        <i class="bi bi-plus-circle me-2"></i>
-                        @(_editTransaction.Id == 0 ? "Nouvelle transaction" : "Modifier la transaction")
-                    </h5>
-                    <button class="btn-close btn-close-white" @onclick="FermerModal"></button>
-                </div>
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(_erreur))
-                    {
-                        <div class="alert alert-danger py-2">@_erreur</div>
-                    }
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Actif</label>
-                        <select @bind="_editTransaction.ActifId" class="form-select">
-                            <option value="0">-- Choisir un actif --</option>
-                            @foreach (var a in _actifs)
-                            {
-                                <option value="@a.Id">@a.Symbole — @a.Nom</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Type</label>
-                        <select @bind="_editTransaction.Type" class="form-select">
-                            <option value="@TypeTransaction.Achat">Achat</option>
-                            <option value="@TypeTransaction.Vente">Vente</option>
-                        </select>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold">Quantité</label>
-                            <input type="number" @bind="_editTransaction.Quantite" class="form-control" step="0.0001" min="0.0001" />
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold">Prix unitaire (€)</label>
-                            <input type="number" @bind="_editTransaction.PrixUnitaire" class="form-control" step="0.01" min="0.0001" />
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Statut</label>
-                        <select @bind="_editTransaction.Statut" class="form-select">
-                            @foreach (var s in Enum.GetValues<StatutTransaction>())
-                            {
-                                <option value="@s">@s</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Notes</label>
-                        <textarea @bind="_editTransaction.Notes" class="form-control" rows="2"></textarea>
-                    </div>
-                    <div class="alert alert-light py-2 mb-0">
-                        <strong>Montant estimé : </strong>
-                        @((_editTransaction.PrixUnitaire * _editTransaction.Quantite).ToString("C2"))
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="FermerModal">Annuler</button>
-                    <button class="btn btn-primary" @onclick="SauvegarderTransaction" disabled="@_saving">
-                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
-                        Enregistrer
-                    </button>
-                </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Actif</th>
+                            <th>Type</th>
+                            <th>Quantité</th>
+                            <th>Prix unitaire (DT)</th>
+                            <th>Montant total (DT)</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in _transactions)
+                        {
+                            var actif = _actifs.FirstOrDefault(a => a.Id == t.ActifId);
+                            <tr>
+                                <td>@t.DateTransaction.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    <strong>@(actif?.Symbole ?? "?")</strong><br />
+                                    <small class="text-muted">@(actif?.Nom ?? "Inconnu")</small>
+                                </td>
+                                <td>
+                                    <span class="badge @(t.Type == TypeTransaction.Achat ? "bg-success" : "bg-danger")">
+                                        @t.Type
+                                    </span>
+                                </td>
+                                <td>@t.Quantite.ToString("N4")</td>
+                                <td>@t.PrixUnitaire.ToString("F3") DT</td>
+                                <td class="fw-bold">@t.MontantTotal.ToString("F2") DT</td>
+                                <td>
+                                    <span class="badge @(t.Statut == StatutTransaction.Confirmee ? "bg-success" : t.Statut == StatutTransaction.En_attente ? "bg-warning" : "bg-secondary")">
+                                        @t.Statut
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => SupprimerTransaction(t)">
+                                        <i class="bi bi-trash me-1"></i>Supprimer
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -176,89 +135,57 @@ else
 <RadzenNotification />
 
 @code {
-    bool _loading = true, _showModal, _saving;
-    List<Transaction> _transactions = new();
-    List<Actif> _actifs = new();
-    Investisseur? _investisseur;
-    Transaction _editTransaction = new();
-    string _erreur = "";
-    string _searchSymbole = "", _filtreType = "", _filtreStatut = "";
+    private bool _loading = true;
+    private List<Transaction> _transactions = new();
+    private List<Actif> _actifs = new();
+    private Investisseur? _investisseur;
+    private string _searchSymbole = "";
+    private string _filtreType = "";
+    private string _filtreStatut = "";
 
     protected override async Task OnInitializedAsync()
     {
         var auth = await AuthState.GetAuthenticationStateAsync();
         var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (uid != null)
+        {
             _investisseur = await InvestisseurSvc.GetInvestisseurByUserIdAsync(uid);
+        }
 
         _actifs = await ActifSvc.GetActifsAsync();
         await ChargerTransactions();
         _loading = false;
     }
 
-    async Task ChargerTransactions()
+    private async Task ChargerTransactions()
     {
         if (_investisseur == null) return;
 
-        TypeTransaction? type = _filtreType == "Achat" ? TypeTransaction.Achat : _filtreType == "Vente" ? TypeTransaction.Vente : null;
-        StatutTransaction? statut = _filtreStatut switch
-        {
-            "Confirmee" => StatutTransaction.Confirmee,
-            "En_attente" => StatutTransaction.En_attente,
-            "Annulee" => StatutTransaction.Annulee,
-            _ => null
-        };
+        TypeTransaction? type = null;
+        if (_filtreType == "Achat") type = TypeTransaction.Achat;
+        else if (_filtreType == "Vente") type = TypeTransaction.Vente;
+        
+        StatutTransaction? statut = null;
+        if (_filtreStatut == "Confirmee") statut = StatutTransaction.Confirmee;
+        else if (_filtreStatut == "En_attente") statut = StatutTransaction.En_attente;
+        else if (_filtreStatut == "Annulee") statut = StatutTransaction.Annulee;
+        
         _transactions = await TransactionSvc.RechercherTransactionsAsync(_investisseur.InvestisseurId, type, statut, _searchSymbole);
     }
 
-    async Task Filtrer() => await ChargerTransactions();
-
-    void OuvrirModalAjout()
+    private async Task Filtrer()
     {
-        _editTransaction = new Transaction { InvestisseurId = _investisseur?.InvestisseurId ?? 0, Statut = StatutTransaction.Confirmee };
-        _erreur = "";
-        _showModal = true;
-    }
-
-    void OuvrirModalEdit(Transaction t)
-    {
-        _editTransaction = new Transaction
-        {
-            Id = t.Id, ActifId = t.ActifId, Type = t.Type, Quantite = t.Quantite,
-            PrixUnitaire = t.PrixUnitaire, Statut = t.Statut, Notes = t.Notes,
-            InvestisseurId = t.InvestisseurId, PeriodeId = t.PeriodeId
-        };
-        _erreur = "";
-        _showModal = true;
-    }
-
-    void FermerModal() { _showModal = false; _erreur = ""; }
-
-    async Task SauvegarderTransaction()
-    {
-        if (_editTransaction.ActifId == 0) { _erreur = "Veuillez sélectionner un actif."; return; }
-        if (_editTransaction.PrixUnitaire <= 0 || _editTransaction.Quantite <= 0) { _erreur = "Prix et quantité doivent être positifs."; return; }
-
-        _saving = true;
-        try
-        {
-            if (_editTransaction.Id == 0)
-                await TransactionSvc.AjouterTransactionAsync(_editTransaction);
-            else
-                await TransactionSvc.ModifierTransactionAsync(_editTransaction);
-
-            await ChargerTransactions();
-            FermerModal();
-            Notify.Notify(NotificationSeverity.Success, "Succès", "Transaction enregistrée !");
-        }
-        catch (Exception ex) { _erreur = ex.Message; }
-        _saving = false;
-    }
-
-    async Task SupprimerTransaction(Transaction t)
-    {
-        await TransactionSvc.SupprimerTransactionAsync(t.Id);
         await ChargerTransactions();
-        Notify.Notify(NotificationSeverity.Warning, "Supprimé", "Transaction supprimée.");
+    }
+
+    private async Task SupprimerTransaction(Transaction t)
+    {
+        var confirm = await JS.InvokeAsync<bool>("confirm", "Supprimer cette transaction ?");
+        if (confirm)
+        {
+            await TransactionSvc.SupprimerTransactionAsync(t.Id);
+            await ChargerTransactions();
+            Notify.Notify(NotificationSeverity.Warning, "Supprimé", "Transaction supprimée.");
+        }
     }
 }

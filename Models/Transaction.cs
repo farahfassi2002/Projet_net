@@ -39,8 +39,6 @@ namespace PortefeuilleInvestissement.Models
         public int? PeriodeId { get; set; }
         public PeriodeInvestissement? Periode { get; set; }
 
-        public void AjouterTransaction() { }
-        public void ModifierTransaction() { }
         public void SupprimerTransaction() { }
     }
 }
